@@ -1,3 +1,5 @@
+#adapted from https://github.com/siso/docker-php/blob/master/Dockerfile
+
 FROM ubuntu:14.04
 
 # Keep upstart from complaining
@@ -27,6 +29,15 @@ RUN sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /
 
 # php files
 ADD ./usr/share/nginx/html/index.php /usr/share/nginx/html/
+
+# Supervisor Config
+RUN /usr/bin/easy_install supervisor
+RUN /usr/bin/easy_install supervisor-stdout
+ADD ./etc/supervisord.conf /etc/supervisord.conf
+
+# startup script
+ADD ./usr/local/bin/start.sh /usr/local/bin/start.sh
+RUN chmod 755 /usr/local/bin/start.sh
 
 EXPOSE 80
 
