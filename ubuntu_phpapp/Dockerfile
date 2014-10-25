@@ -24,7 +24,7 @@ RUN /usr/bin/easy_install supervisor-stdout
 ADD ./etc/supervisord.conf /etc/supervisord.conf
 
 # Copy a sample PHP file
-ADD ./usr/share/nginx/html/index.php /usr/share/nginx/html/
+ADD ./usr/share/nginx/html/home.php /usr/share/nginx/html/
 
 # Open port 80 on the container
 EXPOSE 80
