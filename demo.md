@@ -20,7 +20,14 @@ date; nova boot --flavor onmetal-compute1 --image 6cbfd76c-644c-4e28-b3bf-5a6c2a
 nova ssh play01 --network=public
 ```
 
- * Install on Ubuntu
+ * Look around
+```
+less /proc/cpuinfo
+free -g
+ip addr
+```
+
+ * Install docker on Ubuntu
 ```
 apt-get update
 apt-get install docker.io
@@ -82,3 +89,31 @@ docker pull ubuntu
 ```
 
  * The docker file
+```
+dcont=ubuntu_apache
+cd /root/onmetal-docker/$dcont
+less Dockerfile
+```
+
+ * Build it
+```
+docker build -t="$dcont" .
+docker run -d -p 8080:80 $dcont
+docker logs <container UID>
+```
+ 
+ * Check the public IP for running Apache
+
+
+* A little more envolved docker file. Nginx and PHP
+
+```
+dcont=ubuntu_phpapp
+cd /root/onmetal-docker/$dcont
+less Dockerfile
+docker build -t="$dcont" .
+docker run -d -p 8082:80 $cont
+```
+
+
+
