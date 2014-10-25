@@ -11,17 +11,74 @@ nova flavor-list |egrep 'Name|OnMetal'
 ```
 
  * Build a Ubuntu 14.04 LTS (Trusty Tahr) On Metal server
-
 ```
 date; nova boot --flavor onmetal-compute1 --image 6cbfd76c-644c-4e28-b3bf-5a6c2a879a4a --key-name sri-mb play01 --progress; date
 ```
 
+ * Login to the server
+```
+nova ssh play01 --network=public
+```
 
- * Basic setup
+ * Install on Ubuntu
 ```
 apt-get update
-apt-get upgrade
+apt-get install docker.io
 update-rc.d docker.io  defaults
-docker pull ubuntu
-docker pull centos
 ```
+
+ * Our first image
+```
+docker pull centos
+docker images
+```
+
+ * Run it. '-i' is for interactive & '-t' allocates a pseudo-tty. 
+```
+docker run -i -t centos /bin/bash
+```
+
+ * This runs the default image for CentOS. Play with it
+```
+cat /etc/redhat-release
+ps
+ls
+whoami
+cat /etc/hosts
+exit
+```
+
+ * Run a different release
+```
+docker run -i -t centos:centos6 /bin/bash
+```
+
+ * A brief look at the host networking
+```
+ifconfig docker0
+iptables -nvL
+iptables -nvL -t nat
+```
+
+ * Let's run something more
+```
+docker run -d  centos python -m SimpleHTTPServer 8888
+```
+
+ * And check a few things.
+```
+docker ps
+docker top <container UID>
+docker inspect <container UID> |less
+docker inspect -f '{{ .NetworkSettings.IPAddress }}' <container UID>
+curl  http://<container IP>:8888
+```
+
+ * Let's do some more 
+```
+apt-get install -y git
+git clone https://github.com/srirajan/onmetal-docker
+docker pull ubuntu
+```
+
+ * The docker file
