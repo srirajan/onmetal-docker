@@ -1,6 +1,6 @@
-# Install apache and php
+# Install apache
 FROM ubuntu:14.04
-RUN apt-get update && apt-get install -y apache2 php5
+RUN apt-get update && apt-get install -y apache2
 
 ENV APACHE_SERVERNAME helloworld.example.com
 ENV APACHE_SERVERADMIN admin@localhost
