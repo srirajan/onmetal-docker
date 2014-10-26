@@ -1,5 +1,8 @@
 
 
+On Metal
+======
+
  * List On Metal images
 ```
 nova image-list |egrep 'Name|OnMetal'
@@ -26,6 +29,9 @@ less /proc/cpuinfo
 free -g
 ip addr
 ```
+
+Docker
+======
 
  * Install docker on Ubuntu
 ```
@@ -132,6 +138,9 @@ docker login
 docker push "srirajan/ubuntu_phpapp"
 ```
 
+CoreOS, Fleet & Docker
+======
+
  * Get a discovery URL. More on this at https://coreos.com/docs/cluster-management/setup/cluster-discovery/
 ```
 curl -w "\n" https://discovery.etcd.io/new
@@ -167,6 +176,7 @@ key=sri-mb
 flavor=performance1-1
 image=749dc22a-9563-4628-b0d1-f84ced8c7b7a
 key=sri-mb
+```
 
  * Boot 4 servers for the cluster
 ```
@@ -266,9 +276,8 @@ for i in {1..4}; do etcdctl get /services/web/web$i; done
 ```
 
 
-
 Misc Commands
-=========
+======
 
  * etcd logs
 ```
@@ -277,5 +286,5 @@ journalctl -u etcd
 
 
 Credits
-=========
+======
  * Simone Soldateschi - https://github.com/siso
