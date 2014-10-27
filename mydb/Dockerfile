@@ -15,8 +15,10 @@ ENV DB_PORT 3306
 RUN apt-get update
 RUN apt-get -y -q install   mysql-server-5.6  mysql-client-5.6 curl
 
+#copy our my.cnf
+ADD ./etc/mysql/my.cnf /etc/mysql/conf.d/my.cnf 
 
-# Script that starts supervisord
+#simplified start script
 ADD ./usr/local/bin/start.sh /usr/local/bin/start.sh
 RUN chmod 755 /usr/local/bin/start.sh
 
