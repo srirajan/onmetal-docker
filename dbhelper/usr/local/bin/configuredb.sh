@@ -8,3 +8,8 @@ mysql -h ${DB_PORT_3306_TCP_ADDR} -u root -p${DB_ENV_MYSQL_ROOT_PASSWORD} -e "GR
 mysql -h ${DB_PORT_3306_TCP_ADDR} -u root -p${DB_ENV_MYSQL_ROOT_PASSWORD} -e "SET PASSWORD for '${APP_USER}'@'%' = PASSWORD('${APP_PW}')"
 echo "Counting rows in world.city"
 mysql -h ${DB_PORT_3306_TCP_ADDR} -u root -p${DB_ENV_MYSQL_ROOT_PASSWORD} -e "SELECT COUNT(*) from world.City"
+
+while true
+do
+  # loop infinitely
+done
