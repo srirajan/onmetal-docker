@@ -1,22 +1,21 @@
-FROM mysql
+FROM ubuntu
+
+# Some basic things to make sure the image is happy
+RUN dpkg-divert --local --rename --add /sbin/initctl
+RUN ln -sf /bin/true /sbin/initctl
+ENV DEBIAN_FRONTEND noninteractive
 
 # Database environment
 ENV APP_DB_NAME world
 ENV APP_USER app
-ENV APP_USER 4dfjru4Djhedk33
-ENV APP_LOAD_DB 1
+ENV APP_PW 4dfjru4Djhedk33
 
-RUN apt-get -y -q install curl
+# Update & install packages
+RUN apt-get update
+RUN apt-get -y -q install curl mysql-client
 
-EXPOSE 3306
+#Download the database
+ADD world_innodb.sql /tmp/world_innodb.sql
 
-COPY entrypoint.sh /entrypoint.sh
-
-RUN curl -o /tmp/world_innodb.sql https://raw.githubusercontent.com/RackspaceDevOps/demos/master/mysql_db/world_innodb.sql
-
-RUN /usr/bin/mysqld_safe & && \
-  sleep 5 && \
-  mysql -u root world < /tmp/world_innodb.sql 
-
-ENTRYPOINT ["/entrypoint.sh"]
-
+ADD ./usr/local/bin/configuredb.sh /usr/local/bin/configuredb.sh
+RUN chmod 755 /usr/local/bin/configuredb.sh
