@@ -15,18 +15,14 @@ ENV DB_PORT 3306
 RUN apt-get update
 RUN apt-get -y -q install   mysql-server-5.6  mysql-client-5.6 curl
 
-RUN /usr/bin/mysqld_safe > /dev/null 2>&1 &
-RUN sleep 5
-RUN mysql -e "create database if not exists $DB_NAME"
-RUN curl -o /tmp/world_innodb.sql https://raw.githubusercontent.com/RackspaceDevOps/demos/master/mysql_db/world_innodb.sql
-RUN mysql $DB_NAME < /tmp/world_innodb.sql
-RUN mysql -e "GRANT ALL on world.* to 'app'@'%'"
-RUN mysql -e "SET PASSWORD for 'app'@'%' = PASSWORD('4dfjru4Djhedk33')"
-RUN mysqladmin shutdown
+
+# Script that starts supervisord
+ADD ./usr/local/bin/start.sh /usr/local/bin/start.sh
+RUN chmod 755 /usr/local/bin/start.sh
 
 # Add VOLUMEs to allow backup of config and databases
 VOLUME  ["/var/lib/mysql"]
 
 EXPOSE 3306
 
-CMD ["/usr/bin/mysqld_safe"]
+CMD ["/usr/bin/env", "bash", "/usr/local/bin/start.sh"]
