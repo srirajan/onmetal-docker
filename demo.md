@@ -89,7 +89,6 @@ docker run -d  centos python -m SimpleHTTPServer 8888
 docker ps
 docker top <container UID>
 docker inspect <container UID> |less
-docker inspect -f '{{ .NetworkSettings.IPAddress }}' <container UID>
 curl  http://<container IP>:8888
 ```
 
@@ -146,6 +145,41 @@ docker push "srirajan/ubuntu_phpapp"
 
 Linking containers
 =====
+ * Start a mysql container
+```
+docker run --name db -e MYSQL_ROOT_PASSWORD=dh47dk504dk44dd -d -p 3306:3306 mysql
+docker logs db
+```
+
+ * Build the helper container
+```
+cd /root/onmetal-docker/dbhelper
+docker build -t="srirajan/dbhelper" .
+```
+
+ * Start a helper container and check it's environment
+``` 
+docker run --name dbhelper --link db:db srirajan/dbhelper env
+```
+
+ * Run a script to configure the DB
+```
+docker rm dbhelper
+docker run --name dbhelper --link db:db srirajan/dbhelper /usr/local/bin/configuredb.sh
+```
+
+ * Create the web container
+```
+cd /root/onmetal-docker/web
+docker build -t="srirajan/web" .
+```
+
+ * Run it
+``` 
+docker run --name web01 --link db:db  -p 8081:80 srirajan/web
+```
+
+ * Check URL http://<public IP>/world.php
 
 
 CoreOS, Fleet & Docker
@@ -331,6 +365,7 @@ journalctl -u etcd
 
  * Delete all containers
 ```
+docker stop $(docker ps -a -q)
 docker rm $(docker ps -a -q)
 ```
 
