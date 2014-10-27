@@ -1,0 +1,26 @@
+#cloud-config
+coreos:
+  etcd:
+    # generate a new token for each unique cluster from https://discovery.etcd.io/new
+    discovery: https://discovery.etcd.io/cb9fca019cc886363c3606a6e3b741e1
+    addr: $private_ipv4:4001
+    peer-addr: $private_ipv4:7001    
+  fleet:
+      public-ip: $private_ipv4
+  units:
+  - name: etcd.service
+    command: start
+    after: create-etcd-env.service
+  - name: fleet.service
+    command: start
+    after: etcd.service
+  - name: create-etcd-env.service
+    command: start
+    content: |
+      [Unit]
+      Description=creates etcd environment
+
+      [Service]
+      Before=etcd.service
+      Type=oneshot
+      ExecStart=/bin/sh -c "sed -i \"s/=:/=`ifconfig bond0.401 | grep 'inet ' | awk '{print $2}'`:/\" /run/systemd/system/etcd.service.d/20-cloudinit.conf && systemctl daemon-reload && systemctl etcd restart"
