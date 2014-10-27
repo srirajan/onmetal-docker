@@ -2,9 +2,11 @@
 
 <?php
 
-include_once "/srv/www/db.php";
+include_once "db.php";
 
 // Connecting, selecting database
+echo "Connecing to $db_host as $db_user...<br/>";
+
 $link = mysql_connect( $db_host, $db_user, $db_password)
     or die('Could not connect: ' . mysql_error());
 mysql_select_db($db_name) or die('Could not select database');
