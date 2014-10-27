@@ -33,6 +33,9 @@ ip addr
 Docker
 ======
 
+Get running
+=====
+
  * Install docker on Ubuntu
 ```
 apt-get update
@@ -72,6 +75,9 @@ ifconfig docker0
 iptables -nvL
 iptables -nvL -t nat
 ```
+
+Simple examples
+=====
 
  * Let's run something more
 ```
@@ -138,8 +144,12 @@ docker login
 docker push "srirajan/ubuntu_phpapp"
 ```
 
+Linking containers
+=====
+
+
 CoreOS, Fleet & Docker
-======
+=====
 
  * Get a discovery URL. More on this at https://coreos.com/docs/cluster-management/setup/cluster-discovery/
 ```
@@ -162,6 +172,39 @@ coreos:
       command: start
     - name: fleet.service
       command: start
+      after: etcd.service
+
+```
+
+ * If you are doing on On Metal use this as a workaround for https://github.com/coreos/coreos-cloudinit/issues/195. Eventually the above should work. Save this file as cloudinit-onmetal.yaml
+
+```
+#cloud-config
+coreos:
+  etcd:
+    # generate a new token for each unique cluster from https://discovery.etcd.io/new
+    discovery: https://discovery.etcd.io/cb9fca019cc886363c3606a6e3b741e1
+    addr: $private_ipv4:4001
+    peer-addr: $private_ipv4:7001    
+  fleet:
+      public-ip: $private_ipv4
+  units:
+  - name: etcd.service
+    command: start
+    after: create-etcd-env.service
+  - name: fleet.service
+    command: start
+    after: etcd.service
+  - name: create-etcd-env.service
+    command: start
+    content: |
+      [Unit]
+      Description=creates etcd environment
+
+      [Service]
+      Before=etcd.service
+      Type=oneshot
+      ExecStart=/bin/sh -c "sed -i \"s/=:/=`ifconfig bond0.401 | grep 'inet ' | awk '{print $2}'`:/\" /run/systemd/system/etcd.service.d/20-cloudinit.conf && systemctl daemon-reload && systemctl etcd restart"
 ```
 
  * Decide which flavor you are using
@@ -171,19 +214,21 @@ coreos:
 flavor=onmetal-compute1
 image=75a86b9d-e016-4cb7-8532-9e9b9b5fc58b
 key=sri-mb
+cloudinit=cloudinit-onmetal.yaml
 
 # Performance 
 flavor=performance1-1
 image=749dc22a-9563-4628-b0d1-f84ced8c7b7a
 key=sri-mb
+cloudinit=cloudinit.yaml
 ```
 
  * Boot 4 servers for the cluster
 ```
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data cloudinit.yaml core01
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data cloudinit.yaml core02
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data cloudinit.yaml core03
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data cloudinit.yaml core04
+nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core01
+nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core02
+nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core03
+nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core04
 ```
 
 
@@ -282,6 +327,16 @@ Misc Commands
  * etcd logs
 ```
 journalctl -u etcd
+```
+
+ * Delete all containers
+```
+docker rm $(docker ps -a -q)
+```
+
+ * Delete all images
+```
+docker rmi $(docker images -q)
 ```
 
 
