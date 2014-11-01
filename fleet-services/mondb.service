@@ -1,0 +1,21 @@
+[Unit]
+Description=Monitors db service
+Requires=etcd.service
+Requires=db.service
+BindsTo=db.service
+
+[Service]
+EnvironmentFile=/etc/environment
+
+ExecStart=/bin/bash -c '\
+  while true; do \
+	  etcdctl set /services/db/db \'{"unit": "%n","host": "%H", "public_ipv4_addr": ${COREOS_PUBLIC_IPV4}, "private_ipv4_addr": ${COREOS_PRIVATE_IPV4},  "port": 3306}\' --ttl 10; \
+      sleep 10; \
+  done'
+
+# Stop
+ExecStop=/usr/bin/etcdctl rm /services/db/db
+
+[X-Fleet]
+# Schedule on the same machine as the associated db service
+X-ConditionMachineOf=db.service
