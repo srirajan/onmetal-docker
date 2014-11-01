@@ -2,7 +2,8 @@
 
 cat > /usr/share/nginx/html/db.php <<EOF
 <?php
-\$db_host  = "db";
+include("db_host.php");
+\$db_host  = get_db_host();
 \$db_user  = "${APP_USER}";
 \$db_password  = "${APP_PW}";
 \$db_name  = "${APP_DB_NAME}";
