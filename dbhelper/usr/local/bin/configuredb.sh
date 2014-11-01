@@ -11,5 +11,6 @@ mysql -h ${DB_PORT_3306_TCP_ADDR} -u root -p${DB_ENV_MYSQL_ROOT_PASSWORD} -e "SE
 
 while true
 do
+ sleep 10
   # loop infinitely
 done
