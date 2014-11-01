@@ -1,0 +1,13 @@
+[Unit]
+Description=DB service
+Requires=etcd.service
+
+[Service]
+EnvironmentFile=/etc/environment
+TimeoutStartSec=0
+ExecStartPre=/usr/bin/docker pull mysql
+ExecStart=/usr/bin/docker run --rm --name db -e MYSQL_ROOT_PASSWORD=dh47dk504dk44dd -p ${COREOS_PRIVATE_IPV4}:3306:3306 mysql
+ExecStop=/usr/bin/docker stop db
+Restart=always
+
+
