@@ -1,0 +1,15 @@
+[Unit]
+Description=Web
+After=docker.service
+Requires=docker.service
+ 
+[Service]
+EnvironmentFile=/etc/environment
+TimeoutStartSec=0
+ExecStartPre=/usr/bin/docker pull srirajan/web
+ExecStart=/usr/bin/docker run --rm --name web-%i -p ${COREOS_PUBLIC_IPV4}:808%i:80 srirajan/web
+ExecStop=/usr/bin/docker stop web-%i
+Restart=always
+
+[X-Fleet]
+Conflicts=web@*.service

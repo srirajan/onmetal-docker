@@ -1,0 +1,26 @@
+[Unit]
+Description=Monitors web services
+Requires=etcd.service
+Requires=web@%i.service
+BindsTo=web@%i.service
+
+[Service]
+EnvironmentFile=/etc/environment
+
+ExecStart=/bin/bash -c '\
+  while true; do \
+    curl -f ${COREOS_PUBLIC_IPV4}:808%i; \
+    if [ $? -eq 0 ]; then \
+      etcdctl set /services/web/web%i \'{"unit": "%n","host": "%H", "public_ipv4_addr": ${COREOS_PUBLIC_IPV4}, "private_ipv4_addr": ${COREOS_PRIVATE_IPV4},  "port": 808%i}\' --ttl 10; \
+    else \
+      etcdctl rm /services/web/${COREOS_PUBLIC_IPV4}; \
+    fi; \
+    sleep 10; \
+  done'
+
+# Stop
+ExecStop=/usr/bin/etcdctl rm /services/apache/${COREOS_PUBLIC_IPV4}
+
+[X-Fleet]
+# Schedule on the same machine as the associated Apache service
+X-ConditionMachineOf=web@%i.service
