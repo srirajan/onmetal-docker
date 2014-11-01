@@ -19,8 +19,8 @@ ExecStart=/bin/bash -c '\
   done'
 
 # Stop
-ExecStop=/usr/bin/etcdctl rm /services/apache/${COREOS_PUBLIC_IPV4}
+ExecStop=/usr/bin/etcdctl rm /services/web/web%i 
 
 [X-Fleet]
-# Schedule on the same machine as the associated Apache service
+# Schedule on the same machine as the associated web%i service
 X-ConditionMachineOf=web@%i.service
