@@ -16,7 +16,7 @@ ExecStart=/bin/bash -c '\
       etcdctl set /services/web/web%i/host "%H"  --ttl $ttl; \
       etcdctl set /services/web/web%i/public_ipv4_addr "${COREOS_PUBLIC_IPV4}"  --ttl $ttl; \
       etcdctl set /services/web/web%i/private_ipv4_addr "${COREOS_PRIVATE_IPV4}"  --ttl $ttl; \
-      etcdctl set /services/web/web%i/port "808%i"  --ttl $ttl; \
+      etcdctl set /services/web/web%i/port "180%i"  --ttl $ttl; \
     else \
       etcdctl rm /services/web/web%i/unit; \
       etcdctl rm /services/web/web%i/host; \
