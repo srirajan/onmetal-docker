@@ -38,7 +38,6 @@ EXPOSE 80
 # Script that creates a db file
 ADD ./usr/local/bin/configuredb.sh /usr/local/bin/configuredb.sh
 RUN chmod 755 /usr/local/bin/configuredb.sh
-RUN /usr/local/bin/configuredb.sh
 
 # Script that starts supervisord
 ADD ./usr/local/bin/start.sh /usr/local/bin/start.sh
