@@ -8,12 +8,21 @@ BindsTo=web@%i.service
 EnvironmentFile=/etc/environment
 
 ExecStart=/bin/bash -c '\
+  ttl=10; \
   while true; do \
     curl -f ${COREOS_PUBLIC_IPV4}:808%i; \
     if [ $? -eq 0 ]; then \
-      etcdctl set /services/web/web%i \'{"unit": "%n","host": "%H", "public_ipv4_addr": ${COREOS_PUBLIC_IPV4}, "private_ipv4_addr": ${COREOS_PRIVATE_IPV4},  "port": 808%i}\' --ttl 10; \
+      etcdctl set /services/web/web%i/unit "%n"  --ttl $ttl; \
+      etcdctl set /services/web/web%i/host "%H"  --ttl $ttl; \
+      etcdctl set /services/web/web%i/public_ipv4_addr "${COREOS_PUBLIC_IPV4}"  --ttl $ttl; \
+      etcdctl set /services/web/web%i/private_ipv4_addr "${COREOS_PRIVATE_IPV4}"  --ttl $ttl; \
+      etcdctl set /services/web/web%i/port "808%i"  --ttl $ttl; \
     else \
-      etcdctl rm /services/web/${COREOS_PUBLIC_IPV4}; \
+      etcdctl rm /services/web/web%i/unit; \
+      etcdctl rm /services/web/web%i/host; \
+      etcdctl rm /services/web/web%i/public_ipv4_addr; \
+      etcdctl rm /services/web/web%i/private_ipv4_addr; \
+      etcdctl rm /services/web/web%i/port; \
     fi; \
     sleep 10; \
   done'
