@@ -5,8 +5,9 @@ RUN dpkg-divert --local --rename --add /sbin/initctl
 RUN ln -sf /bin/true /sbin/initctl
 ENV DEBIAN_FRONTEND noninteractive
 
-i
-RUN apt-get install -y nginx php5-cli php5-fpm python-setuptools vim 
+#Install packages
+RUN apt-get update
+RUN apt-get install -y nginx php5-cli php5-fpm python-setuptools vim
 
 # tell Nginx to stay foregrounded
 RUN echo "daemon off;" >> /etc/nginx/nginx.conf
