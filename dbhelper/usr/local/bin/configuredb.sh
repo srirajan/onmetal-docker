@@ -5,6 +5,7 @@ do
   sleep 2
   echo "Waiting for database server..."
 done
+sleep 5
 echo "Creating the world database"
 mysql -h ${DB_PORT_3306_TCP_ADDR} -u root -p${DB_ENV_MYSQL_ROOT_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${APP_DB_NAME}"
 mysql -h ${DB_PORT_3306_TCP_ADDR} -u root -p${DB_ENV_MYSQL_ROOT_PASSWORD} ${APP_DB_NAME} < /tmp/world_innodb.sql
