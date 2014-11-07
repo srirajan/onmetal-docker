@@ -1,6 +1,6 @@
 #!/bin/bash
 
-while ! curl http://$DB_PORT_3306_TCP_ADDR:$DB_PORT_3306_TCP_PORT/
+while ! curl http://$DB_PORT_3306_TCP_ADDR:$DB_PORT_3306_TCP_PORT/ >/dev/null 2>&1
 do
   sleep 2
   echo "Waiting for database server..."
