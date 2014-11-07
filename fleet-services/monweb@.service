@@ -28,7 +28,12 @@ ExecStart=/bin/bash -c '\
   done'
 
 # Stop
-ExecStop=/usr/bin/etcdctl rm /services/web/web%i 
+ExecStop=/bin/bash -c '\
+etcdctl rm /services/web/web%i/unit; \
+etcdctl rm /services/web/web%i/host; \
+etcdctl rm /services/web/web%i/public_ipv4_addr; \
+etcdctl rm /services/web/web%i/private_ipv4_addr; \
+etcdctl rm /services/web/web%i/port;'
 
 [X-Fleet]
 # Schedule on the same machine as the associated web%i service
