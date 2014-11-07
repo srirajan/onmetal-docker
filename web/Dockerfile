@@ -30,6 +30,7 @@ ADD ./etc/supervisord.conf /etc/supervisord.conf
 
 # Copy a sample PHP file
 ADD ./usr/share/nginx/html/home.php /usr/share/nginx/html/home.php
+ADD ./usr/share/nginx/html/db_host.php /usr/share/nginx/html/db_host.phpp
 ADD ./usr/share/nginx/html/world.php /usr/share/nginx/html/world.php
 
 # Open port 80 on the container
