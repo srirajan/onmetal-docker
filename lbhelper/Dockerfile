@@ -7,18 +7,14 @@ ENV DEBIAN_FRONTEND noninteractive
 
 # Update & install packages
 RUN apt-get update
-RUN apt-get install -y curl python-setuptools python-pip less
-
+RUN apt-get install -y curl python-setuptools python-pip less vim
 
 # Install pyrax
 RUN pip install pyrax termcolor
 
 # Script that creates a db file
-ADD ./usr/local/bin/configuredb.sh /usr/local/bin/configuredb.sh
-RUN chmod 755 /usr/local/bin/configuredb.sh
+ADD ./usr/local/bin/config.py /usr/local/bin/config.py
+ADD ./usr/local/bin/utils.py /usr/local/bin/utils.py
+ADD ./usr/local/bin/lbmanage.py /usr/local/bin/lbmanage.py
 
-# Script that starts supervisord
-ADD ./usr/local/bin/start.sh /usr/local/bin/start.sh
-RUN chmod 755 /usr/local/bin/start.sh
-
-CMD ["/usr/bin/env", "bash", "/usr/local/bin/start.sh"]
+CMD ["/usr/bin/python", "/usr/local/bin/lbmanage.py"]

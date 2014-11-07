@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # All Rights Reserved.
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -20,64 +19,31 @@ import utils
 import config
 import time
 import urllib
+import urllib2
 import json
 import time
-import haslib
+import hashlib
 
-
-pyrax.set_setting("identity_type", "rackspace")
-pyrax.set_setting("region", config.cloud_region)
-try:
-    pyrax.set_credentials(config.cloud_user,
-                          config.cloud_api_key,
-                          region=config.cloud_region)
-except pyrax.exc.AuthenticationFailed:
-    utils.log_msg(" ".join(["Pyrax auth failed using", config.cloud_user]),
-                  "ERROR",
-                  config.print_to)
-
-utils.log_msg(" ".join([ "Authenticated using", config.cloud_user]),
-              "INFO",
-              config.print_to)
-
-etcd_url = "http://etcd_host:4001/v2/keys/services/web/web"
-
-for i in xrange(1,10):
-    main_url = etcd_url + str(i)
-    load_main_url = urllib.urlopen(main_url);
-    main_data  = json.loads(load_main_url.read())
-    if main_data.has_key('errorCode'):
-        print "Got error code: ", main_data['errorCode'], " Skipping..."
-    else:
-        node_url = urllib.urlopen(main_url + "/public_ipv4_addr");
-        node_data = json.loads(node_url.read())
-        if node_data.has_key('node'):
-            ip = node_data['node']['value']
-
-        node_url = urllib.urlopen(main_url + "/port");
-        node_data = json.loads(node_url.read())
-        if node_data.has_key('node'):
-            port = node_data['node']['value']
-        add_server(ip, port)
 
 
 def add_server(ip, port):
   url = "".join(["http://", ip , ":", str(port), "/", config.server_health_url])
+#  print url
   try:
-
     urlobj = urllib2.urlopen(url,timeout = 5 )
     urldata = urlobj.read()
     sha1 = hashlib.sha1()
     sha1.update(urldata)
+#    print sha1.hexdigest()
     if sha1.hexdigest() == config.server_health_url_digest:
-      utils.log_msg(" ".join([server_log_id, "Health test passed. Adding to load balancer"]),
+      utils.log_msg(" ".join(["Health test passed. Adding to load balancer"]),
                     "INFO",
                     config.print_to)
 
       # Add to load balancer pool
       clb = pyrax.cloud_loadbalancers
       if clb is None:
-          utils.log_msg(" ".join([server_log_id, "Failed to get load balancer object"]),
+          utils.log_msg(" ".join(["Failed to get load balancer object"]),
                         "ERROR", config.print_to)
 
       else:
@@ -87,14 +53,14 @@ def add_server(ip, port):
           attempts = 5
           while True:
               if attempts == 0:
-                  utils.log_msg(" ".join([server_log_id, "Max attempts reached to get load balancer listing"]),
+                  utils.log_msg(" ".join(["Max attempts reached to get load balancer listing"]),
                                 "ERROR", config.print_to)
                   lb_error = True
                   break
               try:
                   for lb in clb.list():
                       if lb.name == lb_name:
-                          utils.log_msg(" ".join([server_log_id, "Load balancer pool",
+                          utils.log_msg(" ".join(["Load balancer pool",
                                                   lb_name, "found"]),
                                           "INFO",
                                           config.print_to)
@@ -157,8 +123,50 @@ def add_server(ip, port):
                       continue
                       attempts = attempts - 1
                   break
-
   except urllib2.URLError:
     utils.log_msg(" ".join(["Health test failed. Skipping server..."]),
             "ERROR", config.print_to)
+
+if __name__ == '__main__':
+
+    pyrax.set_setting("identity_type", "rackspace")
+    pyrax.set_setting("region", config.cloud_region)
+    try:
+        pyrax.set_credentials(config.cloud_user,
+                          config.cloud_api_key,
+                          region=config.cloud_region)
+    except pyrax.exc.AuthenticationFailed:
+        utils.log_msg(" ".join(["Pyrax auth failed using", config.cloud_user]),
+                  "ERROR",
+                  config.print_to)
+
+    utils.log_msg(" ".join([ "Authenticated using", config.cloud_user]),
+              "INFO",
+              config.print_to)
+
+    etcd_url = "http://etcd_host:4001/v2/keys/services/web/web"
+
+    while True:
+
+      for i in xrange(1, config.server_max_count):
+          main_url = etcd_url + str(i)
+          load_main_url = urllib.urlopen(main_url);
+          main_data  = json.loads(load_main_url.read())
+          if main_data.has_key('errorCode'):
+              print "web", i , " does not exist.Skipping..."
+          else:
+              print "web", i , " Found. Adding..."
+              node_url = urllib.urlopen(main_url + "/public_ipv4_addr");
+              node_data = json.loads(node_url.read())
+              if node_data.has_key('node'):
+                  ip = node_data['node']['value']
+
+              node_url = urllib.urlopen(main_url + "/port");
+              node_data = json.loads(node_url.read())
+              if node_data.has_key('node'):
+                  port = node_data['node']['value']
+              add_server(ip, port)
+      print "Sleeping " , config.server_loop_sleep , " seconds..." 
+      time.sleep(config.server_loop_sleep)
+
 

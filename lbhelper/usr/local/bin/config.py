@@ -24,13 +24,13 @@ cloud_tenant = os.environ['OS_TENANT_NAME']
 
 # load balancer configuration
 clb_name = os.environ['LB_NAME']
-clb_port = 80
 clb_protcol = "HTTP"
-clb_node_port = 80
 clb_limit_sleep = 10
-clb_build_check_interval = 30
+clb_build_check_interval = 15
 clb_build_check_attempts = 10
 
+server_loop_sleep = 10
+server_max_count = 100
 server_health_url = os.environ['SERVER_HEALTH_URL']
 server_health_url_digest = os.environ['SERVER_HEALTH_DIGEST']
 
