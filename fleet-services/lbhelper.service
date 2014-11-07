@@ -1,0 +1,24 @@
+[Unit]
+Description=LB helper service
+Requires=etcd.service
+
+[Service]
+EnvironmentFile=/etc/environment
+TimeoutStartSec=0
+ExecStartPre=/usr/bin/docker pull srirajan/lbhelper
+
+ExecStart=/usr/bin/docker docker run --rm --name lbhelper \
+-e OS_USERNAME=$OS_USERNAME \
+-e OS_REGION_NAME=$OS_OS_REGION_NAME \
+-e OS_PASSWORD=$OS_PASSWORD \
+-e OS_TENANT_NAME=$OS_TENANT_NAME \
+-e LB_NAME=$LB_NAME \
+-e SERVER_HEALTH_URL=$SERVER_HEALTH_URL \
+-e SERVER_HEALTH_DIGEST=$SERVER_HEALTH_DIGEST \
+srirajan/lbhelper
+
+ExecStop=/usr/bin/docker stop lbhelper
+
+Restart=always
+
+
