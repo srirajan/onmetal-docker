@@ -2,7 +2,8 @@
 coreos:
   etcd:
     # generate a new token for each unique cluster from https://discovery.etcd.io/new
-    discovery: https://discovery.etcd.io/cb9fca019cc886363c3606a6e3b741e1
+    # do this for every new cluster
+    discovery: https://discovery.etcd.io/b7073a555ba9de00cffc78dbdcb670b9
     addr: $private_ipv4:4001
     peer-addr: $private_ipv4:7001    
   fleet:
@@ -24,3 +25,15 @@ coreos:
       Before=etcd.service
       Type=oneshot
       ExecStart=/bin/sh -c "sed -i \"s/=:/=`ifconfig bond0.401 | grep 'inet ' | awk '{print $2}'`:/\" /run/systemd/system/etcd.service.d/20-cloudinit.conf && systemctl daemon-reload && systemctl etcd restart"
+  - name: etc-environment.service
+    # This is also a bit of hack like the etcd one above. For some reason /etc/environment is not being created and 
+    # some of fleet services need /etc/environment 
+    command: start
+    content: |
+      [Unit]
+      Description=Creates etc/environment
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c "echo COREOS_PUBLIC_IPV4=`ifconfig bond0.101 | awk '/inet / {print $2}' |sed -e 's/addr://'` | sudo tee /etc/environment ; echo COREOS_PRIVATE_IPV4=`ifconfig bond0.401 | awk '/inet / {print $2}' |sed -e 's/addr://'` | sudo tee --append /etc/environment;"
+
