@@ -10,7 +10,7 @@ EnvironmentFile=/etc/environment
 ExecStart=/bin/bash -c '\
   ttl=10; \
   while true; do \
-    curl -f ${COREOS_PUBLIC_IPV4}:808%i; \
+    curl -f ${COREOS_PUBLIC_IPV4}:180%i; \
     if [ $? -eq 0 ]; then \
       etcdctl set /services/web/web%i/unit "%n"  --ttl $ttl; \
       etcdctl set /services/web/web%i/host "%H"  --ttl $ttl; \
