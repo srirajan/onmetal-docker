@@ -7,7 +7,7 @@ EnvironmentFile=/etc/environment
 TimeoutStartSec=0
 ExecStartPre=/usr/bin/docker pull srirajan/lbhelper
 
-ExecStart=/usr/bin/docker docker run --rm --name lbhelper \
+ExecStart=/usr/bin/docker run --rm --name lbhelper \
 -e OS_USERNAME=$OS_USERNAME \
 -e OS_REGION_NAME=$OS_OS_REGION_NAME \
 -e OS_PASSWORD=$OS_PASSWORD \
