@@ -149,7 +149,7 @@ if __name__ == '__main__':
     while True:
 
       for i in xrange(1, config.server_max_count):
-          main_url = etcd_url + str(i)
+          main_url = etcd_url + format(i,'02')
           load_main_url = urllib.urlopen(main_url);
           main_data  = json.loads(load_main_url.read())
           if main_data.has_key('errorCode'):
