@@ -17,4 +17,8 @@ ADD ./usr/local/bin/config.py /usr/local/bin/config.py
 ADD ./usr/local/bin/utils.py /usr/local/bin/utils.py
 ADD ./usr/local/bin/lbmanage.py /usr/local/bin/lbmanage.py
 
-CMD ["/usr/bin/python", "/usr/local/bin/lbmanage.py"]
+# Script that starts supervisord
+ADD ./usr/local/bin/start.sh /usr/local/bin/start.sh
+RUN chmod 755 /usr/local/bin/start.sh
+
+CMD ["/usr/bin/env", "bash", "/usr/local/bin/start.sh"]
