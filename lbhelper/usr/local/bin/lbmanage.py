@@ -27,15 +27,14 @@ import hashlib
 
 
 def add_server(ip, port):
-  url = "".join(["http://", ip , ":", str(port), "/", config.server_health_url])
-#  print url
+  global config_res
+  url = "".join(["http://", ip , ":", str(port), "/", config_res["SERVER_HEALTH_URL"]])
   try:
     urlobj = urllib2.urlopen(url,timeout = 5 )
     urldata = urlobj.read()
     sha1 = hashlib.sha1()
     sha1.update(urldata)
-#    print sha1.hexdigest()
-    if sha1.hexdigest() == config.server_health_url_digest:
+    if sha1.hexdigest() == config_res["SERVER_HEALTH_DIGEST"]:
       utils.log_msg(" ".join(["Health test passed. Adding to load balancer"]),
                     "INFO",
                     config.print_to)
@@ -47,7 +46,7 @@ def add_server(ip, port):
                         "ERROR", config.print_to)
 
       else:
-          lb_name = config.clb_name
+          lb_name = config_res["LB_NAME"]
           vip_found = False
           lb_error = False
           attempts = 5
@@ -86,8 +85,8 @@ def add_server(ip, port):
                       lb = clb.get(lb_id)
                       if hasattr(lb, 'nodes'):
                           for node in lb.nodes:
-                              if node.address == ip:
-                                  skip_node = True
+                            if node.address == ip and str(node.port) == port:
+                                skip_node = True
                       if skip_node:
                           utils.log_msg(" ".join(["Skipping node as it already exists"]),
                                         "INFO",
@@ -123,24 +122,40 @@ def add_server(ip, port):
                       continue
                       attempts = attempts - 1
                   break
+    else:
+      utils.log_msg(" ".join(["Health test failed - Hash mismatch. Skipping..."]),
+                    "INFO",
+                    config.print_to)
+
   except urllib2.URLError:
-    utils.log_msg(" ".join(["Health test failed. Skipping server..."]),
+    utils.log_msg(" ".join(["Health test failed - Url timeout. Skipping server..."]),
             "ERROR", config.print_to)
 
 if __name__ == '__main__':
 
+    config_qry = ["OS_USERNAME", "OS_REGION", "OS_PASSWORD", "OS_TENANT_NAME", 
+                  "LB_NAME", "SERVER_HEALTH_URL", "SERVER_HEALTH_DIGEST"]
+    config_res = {}
+    etcd_url = "http://etcd_host:4001/v2/keys/services/rscloud"
+    for cfg in config_qry:
+      conf_url = urllib.urlopen(etcd_url + "/" + cfg);
+      conf_data = json.loads(conf_url.read())
+      if conf_data.has_key('node'):
+          config_res[cfg] = conf_data['node']['value']
+          #print config_res[cfg]
+
     pyrax.set_setting("identity_type", "rackspace")
-    pyrax.set_setting("region", config.cloud_region)
+    pyrax.set_setting("region", config_res["OS_REGION"])
     try:
-        pyrax.set_credentials(config.cloud_user,
-                          config.cloud_api_key,
-                          region=config.cloud_region)
+        pyrax.set_credentials(config_res["OS_USERNAME"],
+                          config_res["OS_PASSWORD"],
+                          region=config_res["OS_REGION"])
     except pyrax.exc.AuthenticationFailed:
-        utils.log_msg(" ".join(["Pyrax auth failed using", config.cloud_user]),
+        utils.log_msg(" ".join(["Pyrax auth failed using", config_res["OS_USERNAME"]]),
                   "ERROR",
                   config.print_to)
 
-    utils.log_msg(" ".join([ "Authenticated using", config.cloud_user]),
+    utils.log_msg(" ".join([ "Authenticated using", config_res["OS_USERNAME"]]),
               "INFO",
               config.print_to)
 
@@ -153,9 +168,13 @@ if __name__ == '__main__':
           load_main_url = urllib.urlopen(main_url);
           main_data  = json.loads(load_main_url.read())
           if main_data.has_key('errorCode'):
-              print "web", i , " does not exist.Skipping..."
+              utils.log_msg(" ".join(["web", format(i , '02') , "does not exist.Skipping..."]),
+                        "INFO",
+                        config.print_to)
           else:
-              print "web", i , " Found. Adding..."
+              utils.log_msg(" ".join(["web", format(i , '02') , "Found. Adding..."]),
+                        "INFO",
+                        config.print_to)
               node_url = urllib.urlopen(main_url + "/public_ipv4_addr");
               node_data = json.loads(node_url.read())
               if node_data.has_key('node'):
@@ -166,7 +185,11 @@ if __name__ == '__main__':
               if node_data.has_key('node'):
                   port = node_data['node']['value']
               add_server(ip, port)
-      print "Sleeping " , config.server_loop_sleep , " seconds..." 
+
+      utils.log_msg(" ".join(["Sleeping", str(config.server_loop_sleep ) , "seconds..."]),
+                "INFO",
+                config.print_to)
+      
       time.sleep(config.server_loop_sleep)
 
 

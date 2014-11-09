@@ -16,22 +16,11 @@
 import sys
 import os
 
-# cloud auth data will be pulled from environment
-cloud_user = os.environ['OS_USERNAME']
-cloud_api_key = os.environ['OS_PASSWORD']
-cloud_region = os.environ['OS_REGION_NAME'].upper()
-cloud_tenant = os.environ['OS_TENANT_NAME']
-
-# load balancer configuration
-clb_name = os.environ['LB_NAME']
-clb_protcol = "HTTP"
 clb_limit_sleep = 10
 clb_build_check_interval = 15
 clb_build_check_attempts = 10
 
 server_loop_sleep = 10
 server_max_count = 100
-server_health_url = os.environ['SERVER_HEALTH_URL']
-server_health_url_digest = os.environ['SERVER_HEALTH_DIGEST']
 
 print_to = sys.stdout #use this to print to screen
