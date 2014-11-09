@@ -11,5 +11,3 @@ ExecStart=/usr/bin/docker run --rm --name web-%i -p ${COREOS_PUBLIC_IPV4}:180%i:
 ExecStop=/usr/bin/docker stop web-%i
 Restart=always
 
-[X-Fleet]
-Conflicts=web@*.service
