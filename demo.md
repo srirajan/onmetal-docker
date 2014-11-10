@@ -1,28 +1,42 @@
 
 This exercise will review Rackspace On Metal, an intro to Docker, review of CoreOS & Fleet and demonstrate how one could use all of them to build a multi-tier application. 
 
-The associated presentation on this can be found at <TODO:slide share link>
+The associated presentation on this can be found at TODO:slide share link
 
 Before you start
 ======
 
 You will need the following
  
- * A Rackspace cloud account. Ge free Rackspace developer account - https://developer.rackspace.com/signup/
+ * A Rackspace cloud account. Get a free  tier Rackspace developer account - https://developer.rackspace.com/signup/
  
  * If you don't have an account, you can still follow this and do it on your own servers.  Some of the examples are specific to Rackspace cloud servers but the ones around Docker, CoreOS and Fleet can be done on any server.
 
  * For any questions, just raise an issue in Git.
 
+ * Ensure you have novaclient installed. Refer to http://www.rackspace.com/knowledge_center/article/installing-python-novaclient-on-linux-and-mac-os for more details.
+
 
 On Metal
 ======
  
- * Ensure you have novaclient install. Ref : http://www.rackspace.com/knowledge_center/article/installing-python-novaclient-on-linux-and-mac-os
+As of Nov, 2014, On Metal is only available in US region of IAD. So you need a Rackspace US cloud account. You can read more about On Metal here. http://www.rackspace.com/cloud/servers/onmetal/
 
  * List all On Metal images
 ```
-nova image-list |egrep 'Name|OnMetal'
+$ nova image-list |egrep 'Name|OnMetal'
+| ID                                   | Name                                                                                         | Status | Server                               |
+| e9f4497a-2ec2-471c-ad1c-f491786a44d9 | OnMetal - CentOS 6.5                                                                         | ACTIVE |                                      |
+| 6d7d1f79-dbff-4cdc-a71c-0f7ad4ea9c3a | OnMetal - CentOS 7                                                                           | ACTIVE |                                      |
+| ef2ab1c3-8ab6-477d-a38e-8225b071ffc3 | OnMetal - CoreOS (Alpha)                                                                     | ACTIVE |                                      |
+| 43a4650f-a45b-4bcf-abbb-bb1c8dc9a50f | OnMetal - CoreOS (Beta)                                                                      | ACTIVE |                                      |
+| 75a86b9d-e016-4cb7-8532-9e9b9b5fc58b | OnMetal - CoreOS (Stable)                                                                    | ACTIVE |                                      |
+| c7cb5085-27e5-4f18-a065-7759ae2aba3a | OnMetal - Debian 7 (Wheezy)                                                                  | ACTIVE |                                      |
+| 43415443-ecb7-4419-870c-98201addfded | OnMetal - Debian Testing (Jessie)                                                            | ACTIVE |                                      |
+| b6713711-5ddf-44fb-b31b-32e9a691a73d | OnMetal - Debian Unstable (Sid)                                                              | ACTIVE |                                      |
+| 7c5fdb31-a853-4786-a84a-03b45fb14bbd | OnMetal - Fedora 20 (Heisenbug)                                                              | ACTIVE |                                      |
+| 4b960e01-897b-46d8-a81c-20729d28485c | OnMetal - Ubuntu 12.04 LTS (Precise Pangolin)                                                | ACTIVE |                                      |
+| 06bb130b-7607-46f9-85ae-124bae4d0f5b | OnMetal - Ubuntu 14.04 LTS (Trusty Tahr)                                                     | ACTIVE |                                      |
 ```
 
  * List On Metal flavors
