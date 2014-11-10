@@ -123,7 +123,7 @@ def add_server(ip, port):
                       attempts = attempts - 1
                   break
     else:
-      utils.log_msg(" ".join(["Health test failed - Hash mismatch. Skipping..."]),
+      utils.log_msg(" ".join(["Health test failed - Hash mismatch.Expecting", sha1.hexdigest(), "Skipping..."]),
                     "INFO",
                     config.print_to)
 
