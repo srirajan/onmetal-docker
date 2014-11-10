@@ -1,45 +1,99 @@
 
+This exercise will review Rackspace On Metal, an intro to Docker, review of CoreOS & Fleet and demonstrate how one could use all of them to build a multi-tier application. 
+
+The associated presentation on this can be found at <TODO:slide share link>
+
+Before you start
+======
+
+You will need the following
+ 
+ * A Rackspace cloud account. Ge free Rackspace developer account - https://developer.rackspace.com/signup/
+ 
+ * If you don't have an account, you can still follow this and do it on your own servers.  Some of the examples are specific to Rackspace cloud servers but the ones around Docker, CoreOS and Fleet can be done on any server.
+
+ * For any questions, just raise an issue in Git.
+
 
 On Metal
 ======
+ 
+ * Ensure you have novaclient install. Ref : http://www.rackspace.com/knowledge_center/article/installing-python-novaclient-on-linux-and-mac-os
 
- * List On Metal images
+ * List all On Metal images
 ```
 nova image-list |egrep 'Name|OnMetal'
 ```
 
- * List On Metal images
+ * List On Metal flavors
 ```
 nova flavor-list |egrep 'Name|OnMetal'
 ```
 
  * Build a Ubuntu 14.04 LTS (Trusty Tahr) On Metal server
 ```
-date; nova boot --flavor onmetal-compute1 --image 6cbfd76c-644c-4e28-b3bf-5a6c2a879a4a --key-name sri-mb play01 --progress; date
+key=sri-mb
+nova boot --flavor onmetal-compute1 --image 6cbfd76c-644c-4e28-b3bf-5a6c2a879a4a --key-name $key --poll play01
 ```
 
- * Login to the server
+ * SSH to the server
 ```
 nova ssh play01 --network=public
 ```
 
- * Look around
+ * Poke around
 ```
 less /proc/cpuinfo
 free -g
 ip addr
 ```
 
+Prepare CoreOS cluster
+======
+
+* Before we do other stuff, let's spin up some core OS servers. First get a discovery URL. More on this at https://coreos.com/docs/cluster-management/setup/cluster-discovery/
+```
+curl -w "\n" https://discovery.etcd.io/new
+```
+
+ * Edit the cloud init file named cloudinit.yaml. Replace the token url from above.
+
+
+ * If you are doing on On Metal use cloudinit-onmetal.yaml as a workaround for https://github.com/coreos/coreos-cloudinit/issues/195. Eventually the above should work. 
+
+
+ * Decide which flavor you are using
+
+```
+#On metal
+flavor=onmetal-compute1
+image=75a86b9d-e016-4cb7-8532-9e9b9b5fc58b
+key=sri-mb
+cloudinit=cloudinit-onmetal.yaml
+
+# Performance 
+flavor=performance1-1
+image=749dc22a-9563-4628-b0d1-f84ced8c7b7a
+key=sri-mb
+cloudinit=cloudinit.yaml
+```
+
+ * Boot 4 servers for the cluster
+```
+nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core01
+nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core02
+nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core03
+nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core04
+```
+
+
 Docker
 ======
 
-Get running
-=====
-
- * Install docker on Ubuntu
+ * Install docker on Ubuntu (play01 above)
 ```
 apt-get update
-apt-get install docker.io
+apt-get install -y docker.io screen git vim
 update-rc.d docker.io  defaults
 ```
 
@@ -62,6 +116,7 @@ ls
 whoami
 cat /etc/hosts
 exit
+docker ps -a
 ```
 
  * Run a different release
@@ -96,27 +151,9 @@ curl  http://<container IP>:8888
 ```
 apt-get install -y git
 git clone https://github.com/srirajan/onmetal-docker
-docker pull ubuntu
 ```
 
- * The docker file
-```
-dcont=ubuntu_apache
-cd /root/onmetal-docker/$dcont
-less Dockerfile
-```
-
- * Build it
-```
-docker build -t="$dcont" .
-docker run -d -p 8081:80 $dcont
-docker logs <container UID>
-```
- 
- * Check the public IP for running Apache
-
-
-* A little more evolved docker file. Install Nginx and PHP & load a sample file
+ * The docker file. Install Nginx and PHP & load a sample file
 
 ```
 cd /root/onmetal-docker/ubuntu_phpapp
@@ -130,17 +167,6 @@ docker logs <container UID>
  * Docker diff
 ```
 docker diff <container UID>
-```
-
- * Docker port
-```
-docker port <container UID> 80
-```
-
- * Push the file to the docker regitry
-```
-docker login
-docker push "srirajan/ubuntu_phpapp"
 ```
 
 Linking containers
@@ -165,207 +191,102 @@ docker run --name dbhelper --link db:db srirajan/dbhelper env
  * Run a script to configure the DB
 ```
 docker rm dbhelper
-docker run --name dbhelper --link db:db srirajan/dbhelper /usr/local/bin/configuredb.sh
+docker run -d --name dbhelper --link db:db srirajan/dbhelper
+docker logs dbhelper
 ```
 
- * Create the web container
-```
-cd /root/onmetal-docker/web
-docker build -t="srirajan/web" .
-```
-
- * Run it
-``` 
-docker run --name web01 --link db:db  -p 8081:80 srirajan/web
-```
-
- * Check URL http://<public IP>/world.php
 
 
 CoreOS, Fleet & Docker
 =====
 
- * Get a discovery URL. More on this at https://coreos.com/docs/cluster-management/setup/cluster-discovery/
-```
-curl -w "\n" https://discovery.etcd.io/new
-```
-
- * Create a cloud init file and name it cloudinit.yaml. Replace the token url from above.
-```
-#cloud-config
-coreos:
-  etcd:
-    # generate a new token for each unique cluster from https://discovery.etcd.io/new
-    discovery: https://discovery.etcd.io/cb9fca019cc886363c3606a6e3b741e1
-    addr: $private_ipv4:4001
-    peer-addr: $private_ipv4:7001
-  fleet:
-    public-ip: $private_ipv4
-  units:
-    - name: etcd.service
-      command: start
-    - name: fleet.service
-      command: start
-      after: etcd.service
-
-```
-
- * If you are doing on On Metal use this as a workaround for https://github.com/coreos/coreos-cloudinit/issues/195. Eventually the above should work. Save this file as cloudinit-onmetal.yaml
-
-```
-#cloud-config
-coreos:
-  etcd:
-    # generate a new token for each unique cluster from https://discovery.etcd.io/new
-    discovery: https://discovery.etcd.io/cb9fca019cc886363c3606a6e3b741e1
-    addr: $private_ipv4:4001
-    peer-addr: $private_ipv4:7001    
-  fleet:
-      public-ip: $private_ipv4
-  units:
-  - name: etcd.service
-    command: start
-    after: create-etcd-env.service
-  - name: fleet.service
-    command: start
-    after: etcd.service
-  - name: create-etcd-env.service
-    command: start
-    content: |
-      [Unit]
-      Description=creates etcd environment
-
-      [Service]
-      Before=etcd.service
-      Type=oneshot
-      ExecStart=/bin/sh -c "sed -i \"s/=:/=`ifconfig bond0.401 | grep 'inet ' | awk '{print $2}'`:/\" /run/systemd/system/etcd.service.d/20-cloudinit.conf && systemctl daemon-reload && systemctl etcd restart"
-```
-
- * Decide which flavor you are using
-
-```
-#On metal
-flavor=onmetal-compute1
-image=75a86b9d-e016-4cb7-8532-9e9b9b5fc58b
-key=sri-mb
-cloudinit=cloudinit-onmetal.yaml
-
-# Performance 
-flavor=performance1-1
-image=749dc22a-9563-4628-b0d1-f84ced8c7b7a
-key=sri-mb
-cloudinit=cloudinit.yaml
-```
-
- * Boot 4 servers for the cluster
-```
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core01
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core02
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core03
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core04
-```
-
-
- * Now, lets play with Fleet. List machines.
+ * In the above steps, we should have created 4 core os machines with cloudinit. Now, lets play with CoreOS, etcd and Fleet.
 ```
 fleetctl list-machines
 ```
 
- * Create a systemd file for Fleet. Name this 'web@.service'.  The naming convention is quite important & it allows you to have a single configuration and easily create new units.
+ * Pull our repo
 ```
-[Unit]
-Description=Web
-After=docker.service
-Requires=docker.service
- 
-[Service]
-EnvironmentFile=/etc/environment
-TimeoutStartSec=0
-ExecStartPre=/usr/bin/docker pull srirajan/ubuntu_phpapp
-ExecStart=/usr/bin/docker run --rm --name web-%i -p ${COREOS_PUBLIC_IPV4}:808%i:80 srirajan/ubuntu_phpapp
-ExecStop=/usr/bin/docker stop web-%i
-Restart=always
-
-[X-Fleet]
-Conflicts=web@*.service
+git clone https://github.com/srirajan/onmetal-docker
 ```
 
- * Submit this service to fleet
+
+ * Review and load the db services
 ```
-fleetctl submit web\@.service 
+cd /home/core/onmetal-docker/fleet-services
+fleetctl submit *.service
 fleetctl list-unit-files
 ```
 
- * Start the service
+ * Run them
 ```
-fleetctl start web@1.service 
+fleetctl start db.service
+fleetctl start dbhelper.service
+fleetctl start mondb.service
+fleetctl list-units
+```
+
+ * Start the one container from the web service
+```
+fleetctl start web@01.service 
 fleetctl list-units
 ```
 
  * Start more
 ```
-fleetctl start web@{2..4}.service 
+fleetctl start web@{02..10}.service 
 fleetctl list-units
 ```
  
- * Do some playing
+ * Start the monweb services
 ```
-fleetctl journal web@1.service
-docker ps
+fleetctl start monweb@{01..10}.service 
 ```
+fleetctl destroy monweb@{01..10}.service 
 
- * Create a watch/sidekick service
+
+ * Query etcd for values
 ```
-[Unit]
-Description=Monitors web services
-Requires=etcd.service
-Requires=web@%i.service
-BindsTo=web@%i.service
-
-[Service]
-EnvironmentFile=/etc/environment
-
-ExecStart=/bin/bash -c '\
-  while true; do \
-    curl -f ${COREOS_PUBLIC_IPV4}:808%i; \
-    if [ $? -eq 0 ]; then \
-      etcdctl set /services/web/web%i \'{"unit": "%n","host": "%H", "public_ipv4_addr": ${COREOS_PUBLIC_IPV4}, "private_ipv4_addr": ${COREOS_PRIVATE_IPV4},  "port": 808%i}\' --ttl 10; \
-    else \
-      etcdctl rm /services/web/${COREOS_PUBLIC_IPV4}; \
-    fi; \
-    sleep 10; \
-  done'
-
-# Stop
-ExecStop=/usr/bin/etcdctl rm /services/apache/${COREOS_PUBLIC_IPV4}
-
-[X-Fleet]
-# Schedule on the same machine as the associated Apache service
-X-ConditionMachineOf=web@%i.service
+for i in {01..10}; do etcdctl get /services/web/web$i/host; done
+for i in {01..10}; do etcdctl get /services/web/web$i/public_ipv4_addr; etcdctl get /services/web/web$i/port; done
 ```
 
- * Start services
+ * Test the site
 ```
-fleetctl start monweb@{1..4}.service 
+curl http://<IP>:<Port>/home.php
 ```
 
- * Query etcd
+ * Optionally, run the lbhelper service that updates the load balancer. This requires a Rackspace cloud load balancer pre-configured.  First set the values in etcd
+
 ```
-for i in {1..4}; do etcdctl get /services/web/web$i; done
+etcdctl set /services/rscloud/OS_USERNAME <cloud username>
+etcdctl set /services/rscloud/OS_REGION <cloud region>
+etcdctl set /services/rscloud/OS_PASSWORD <cloud api key>
+etcdctl set /services/rscloud/OS_TENANT_NAME <cloud account no>
+etcdctl set /services/rscloud/LB_NAME <cloud lb name>
+etcdctl set /services/rscloud/SERVER_HEALTH_URL health.php
+etcdctl set /services/rscloud/SERVER_HEALTH_DIGEST dbe72348d4e3aa87958f421e4a9592a82839f3d8
+```
+
+ * Run the lbhelper service
+```
+fleetctl start lbhelper.service 
 ```
 
 
 Misc Commands
 ======
 
- * etcd logs
+ * Review logs of etcd and fleet
 ```
 journalctl -u etcd
+journalctl -u fleet
 ```
 
  * Delete all containers
 ```
 docker stop $(docker ps -a -q)
+sleep 2
 docker rm $(docker ps -a -q)
 ```
 
@@ -374,7 +295,30 @@ docker rm $(docker ps -a -q)
 docker rmi $(docker images -q)
 ```
 
+ * Cleanup fleet
+```
+fleetctl destroy $(fleetctl list-units -fields=unit -no-legend)
+fleetctl destroy $(fleetctl list-unit-files -fields=unit -no-legend)
+sleep 5
+fleetctl list-unit-files
+fleetctl list-units
+```
+
+ * restart Fleet
+```
+sudo systemctl restart fleet.service
+```
+
+Resources
+======
+
+ * Free Rackspace developer account - https://developer.rackspace.com/signup/
+
+ * Core OS - https://coreos.com/docs/
+
 
 Credits
 ======
  * Simone Soldateschi - https://github.com/siso
+ * Kyle Kelley - https://github.com/rgbkrk
+ * tmpnb - https://github.com/jupyter/tmpnb
