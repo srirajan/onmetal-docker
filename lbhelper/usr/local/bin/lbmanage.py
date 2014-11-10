@@ -136,9 +136,9 @@ if __name__ == '__main__':
     config_qry = ["OS_USERNAME", "OS_REGION", "OS_PASSWORD", "OS_TENANT_NAME", 
                   "LB_NAME", "SERVER_HEALTH_URL", "SERVER_HEALTH_DIGEST"]
     config_res = {}
-    etcd_url = "http://etcd_host:4001/v2/keys/services/rscloud"
+    etcd_rscloud_url = "http://etcd_host:4001/v2/keys/services/rscloud"
     for cfg in config_qry:
-      conf_url = urllib.urlopen(etcd_url + "/" + cfg);
+      conf_url = urllib.urlopen(etcd_rscloud_url + "/" + cfg);
       conf_data = json.loads(conf_url.read())
       if conf_data.has_key('node'):
           config_res[cfg] = conf_data['node']['value']
@@ -161,7 +161,14 @@ if __name__ == '__main__':
 
     etcd_url = "http://etcd_host:4001/v2/keys/services/web/web"
 
+    config_qry = ["SERVER_HEALTH_URL", "SERVER_HEALTH_DIGEST"]
     while True:
+      etcd_rscloud_url = "http://etcd_host:4001/v2/keys/services/rscloud"
+      for cfg in config_qry:
+        conf_url = urllib.urlopen(etcd_rscloud_url + "/" + cfg);
+        conf_data = json.loads(conf_url.read())
+        if conf_data.has_key('node'):
+            config_res[cfg] = conf_data['node']['value']
 
       for i in xrange(1, config.server_max_count):
           main_url = etcd_url + format(i,'02')
