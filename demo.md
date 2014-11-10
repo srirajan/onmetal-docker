@@ -185,6 +185,7 @@ cd /root/onmetal-docker/ubuntu_phpapp
 cat Dockerfile
 docker build -t="srirajan/ubuntu_phpapp" .
 docker images
+```
 
  *  Run the container and map the port 80 on the container to port 8082 on the host. You can curl the URL to see the site.
 
