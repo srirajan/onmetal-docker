@@ -8,6 +8,7 @@ TimeoutStartSec=0
 ExecStartPre=/usr/bin/docker pull srirajan/dbhelper
 ExecStart=/usr/bin/docker run --rm --name dbhelper --link db:db srirajan/dbhelper /usr/local/bin/configuredb.sh
 ExecStop=/usr/bin/docker stop dbhelper
+Restart=always
 
 [X-Fleet]
 # Schedule on the same machine as the associated Apache service

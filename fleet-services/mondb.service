@@ -6,7 +6,7 @@ BindsTo=db.service
 
 [Service]
 EnvironmentFile=/etc/environment
-
+Restart=always
 ExecStart=/bin/bash -c '\
   while true; do \
 	  etcdctl set /services/db/db_private_ip \'{"value": \"${COREOS_PRIVATE_IPV4}\"}\' --ttl 10; \

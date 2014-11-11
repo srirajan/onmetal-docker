@@ -6,6 +6,7 @@ BindsTo=web@%i.service
 
 [Service]
 EnvironmentFile=/etc/environment
+Restart=always
 
 ExecStart=/bin/bash -c '\
   ttl=10; \
