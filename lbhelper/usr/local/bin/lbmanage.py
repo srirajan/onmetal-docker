@@ -329,14 +329,22 @@ if __name__ == '__main__':
                         config.print_to)
               node_url = urllib.urlopen(main_url + "/public_ipv4_addr");
               node_data = json.loads(node_url.read())
+              ip = None
               if node_data.has_key('node'):
                   ip = node_data['node']['value']
 
               node_url = urllib.urlopen(main_url + "/port");
               node_data = json.loads(node_url.read())
+              port = None
               if node_data.has_key('node'):
                   port = node_data['node']['value']
-              process_server(ip, port)
+              if ip is not None and port is not None:
+                process_server(ip, port)
+              else:
+                utils.log_msg(" ".join(["web", format(i , '02') , "No IP or port info found. Skipping..."]),
+                        "INFO",
+                        config.print_to)
+
 
       print_summary()
       utils.log_msg(" ".join(["Sleeping", str(config.server_loop_sleep ) , "seconds..."]),
