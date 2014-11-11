@@ -20,9 +20,15 @@ import datetime
 import os
 import config
 import string
-    
+
+
+"""
+Log message
+"""
+
 def log_msg(msg, type, fileobj):
-      print("".join(["[", datetime.datetime.now().strftime('%x %X'), "]",
-                            "[", type, "]:", msg])
-                    , file=fileobj)
+    print("".join(["[", datetime.datetime.now().strftime('%x %X'), "]",
+        "[", type, "]:", msg])
+        , file=fileobj)
+
 

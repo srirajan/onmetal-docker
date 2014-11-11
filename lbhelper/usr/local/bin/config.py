@@ -16,8 +16,8 @@
 import sys
 import os
 
-clb_limit_sleep = 10
-clb_build_check_interval = 15
+clb_limit_sleep = 5
+clb_build_check_interval = 5
 clb_build_check_attempts = 10
 
 server_loop_sleep = 10
