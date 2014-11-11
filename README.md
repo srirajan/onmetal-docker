@@ -201,8 +201,6 @@ curl http://<IP>:8082/home.php
 docker diff <container UID>
 ```
 
-
-
  * Now let's look at linking containers. Start a mysql container and map the mysql port on the container to the host port 3306
 ```
 docker run --name db -e MYSQL_ROOT_PASSWORD=dh47dk504dk44dd -d -p 3306:3306 mysql
@@ -232,7 +230,7 @@ docker logs dbhelper
 ```
 export TOKEN=$( head -c 30 /dev/urandom | xxd -p )
 docker run --net=host -d -e CONFIGPROXY_AUTH_TOKEN=$TOKEN jupyter/configurable-http-proxy --default-target http://127.0.0.1:9999
-docker run --net=host -d -e CONFIGPROXY_AUTH_TOKEN=$TOKEN -v /var/run/docker.sock:/docker.sock  jupyter/tmpnb --docker-version="1.12" 
+docker run --net=host -d -e CONFIGPROXY_AUTH_TOKEN=$TOKEN -v /var/run/docker.sock:/docker.sock jupyter/tmpnb python orchestrate.py --cull-timeout=60 --docker-version="1.12" --command="ipython3 notebook --NotebookApp.base_url={base_path} --ip=0.0.0.0 --port {port}"
 docker ps
 ```
 
@@ -246,7 +244,7 @@ CoreOS, Fleet & Docker
 ```
 fleetctl list-machines
 ```
-
+  
  * Pull our repo on one of the nodes.
 ```
 git clone https://github.com/srirajan/onmetal-docker
@@ -336,12 +334,119 @@ fleetctl start lbhelper.service
 fleetctl journal lbhelper.service 
 ```
 
-What next?
+Docker Resource handling
 ======
 
- * Extend the db to be a cluster like mysql/galera.
- 
- * Build a container that can be used to spin up additional core os hosts. You can also tie this to some form of load measurement or monitoring system.
+Docker uses cgroups to group processes. With cgroups you can manage resources very effectively and this does not apply just to containers. You can do the same with any process. Ultimately with docker, it is a process in a cgroup. On an OS that uses systemd, you can view them using the following.
+```
+systemd-cgls
+```
+
+Tools like free and top are not aware of cgroups. They typically read metrics from the proc filesystem like /proc/meminfo, /proc/vmstat etc.
+
+Also worth noting that , processes inside a container cannot rely on these tools as well as they are subject to limits imposed by the cgroups. To make this worse, /sys/fs/cgroup/memory/memory.stat has a different format to /proc/meminfo. A cgroup specific stuff under /sys/fs/cgroup/cpu/system.slice/<ps name> 
+
+systemd-cgtop command comes handy here.
+
+```
+systemd-cgtop
+Path                                                                                                                                                                 Tasks   %CPU   Memory  Input/s Output/s
+
+/                                                                                                                                                                       73    2.9   791.1M        -        -
+/system.slice                                                                                                                                                            -    2.8   742.1M        -        -
+/system.slice/system-sshd.slice                                                                                                                                          4    1.1    24.1M        -        -
+/system.slice/etcd.service                                                                                                                                               1    0.9    79.6M       0B   390.8K
+/system.slice/fleet.service                                                                                                                                              1    0.7    19.3M        -        -
+/system.slice/dbus.service                                                                                                                                               1    0.0     1.0M        -        -
+/system.slice/nova-agent-auto.service                                                                                                                                    1    0.0     7.1M        -        -
+/system.slice/ntpd.service                                                                                                                                               1    0.0   640.0K        -        -
+/system.slice/docker.service                                                                                                                                             1      -   561.5M        -        -
+/system.slice/locksmithd.service                                                                                                                                         1      -     7.1M        -        -
+/system.slice/nova-agent-watcher.service                                                                                                                                 1      -     4.3M        -        -
+/system.slice/system-getty.slice                                                                                                                                         1      -   220.0K        -        -
+/system.slice/system-getty.slice/getty@tty1.service                                                                                                                      1      -        -        -        -
+/system.slice/system-serial\x2dgetty.slice                                                                                                                               1      -   176.0K        -        -
+/system.slice/system-serial\x2dgetty.slice/serial-getty@ttyS0.service                                                                                                    1      -        -        -        -
+/system.slice/system-sshd.slice/sshd@552-162.242.254.113:22-212.100.225.42:50254.service                                                                                 4      -        -        -        -
+/system.slice/systemd-journald.service                                                                                                                                   1      -    17.6M        -        -
+/system.slice/systemd-logind.service                                                                                                                                     1      -   528.0K        -        -
+/system.slice/systemd-networkd.service                                                                                                                                   1      -   312.0K        -        -
+/system.slice/systemd-resolved.service                                                                                                                                   1      -   260.0K        -        -
+/system.slice/systemd-udevd.service                                                                                                                                      1      -     1.2M        -        -
+/system.slice/update-engine.service                                                                                                                                      1      -     7.9M        -        -
+^C
+
+```
+
+Docker provides some options (See http://docs.docker.com/reference/run/#runtime-constraints-on-cpu-and-memory)
+
+The -c switch specifies CPU shares available to the container.  Every new container get 1024 shares of CPU by default. This is just an abitary number it will only make sense if you change this for a container. For eg. if you have 10 containers on a server with the default share they will all have the same access to CPU time.  However, if 5 of them have 2048, then now you have given those 5 twice the CPU time when compared to other 5.
+
+An interesting fact about Cgroups is that it only limits when needed. So even a lower value of CPU shares will give an container CPU time as long as there is no contention.
+
+
+Let's build a simple container
+
+```
+mkdir  -p loadme
+cd loadme
+cat <<EOF  >Dockerfile
+FROM ubuntu
+
+# Some basic things to make sure the image is happy
+RUN dpkg-divert --local --rename --add /sbin/initctl
+RUN ln -sf /bin/true /sbin/initctl
+ENV DEBIAN_FRONTEND noninteractive
+
+# Update & install packages
+RUN apt-get update
+RUN apt-get -y -q install stress
+
+EOF
+
+```
+```
+docker build -t=loadme .
+```
+
+Run two different containers with different CPU shares
+
+```
+docker run -d --name=avgjoe loadme stress --cpu 2
+docker run -d --name=luckyjim -c 2048 loadme stress --cpu 2
+```
+
+Now if you look in systemd-cgtop you should see luckyjim using twice the CPU.
+
+```
+docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+f50e85039000        loadme:latest       "stress --cpu 2"    7 minutes ago       Up 7 minutes                            luckyjim            
+810e7ae95bf9        loadme:latest       "stress --cpu 2"    7 minutes ago       Up 7 minutes                            avgjoe              
+```
+
+
+```
+/system.slice                                                                                                                                                            -   98.7   694.6M        -        -
+/system.slice/docker-f50e85039000855f17fb02bea2161bd50cd137f7a73b8f40774c4601afe9e58f.scope                                                                              3   63.8     3.1M        -        -
+/system.slice/docker-810e7ae95bf9e4a1bb68138f4d5a5946b401b2fc8afb621e093fe421242f3e51.scope                                                                              3   32.0     3.1M        -        -
+```
+
+With Memory, docker will allocate all of the RAM by default. To limit it use the -m X switch. This is physical RAM but if the host OS has swap space you can technically allocated more than physical RAM.
+
+
+This will fail
+
+```
+docker run -i -t -m 256m loadme stress --vm 1 --vm-bytes 500M --vm-hang 0
+stress: info: [1] dispatching hogs: 0 cpu, 0 io, 1 vm, 0 hdd
+stress: FAIL: [1] (416) <-- worker 13 got signal 9
+stress: WARN: [1] (418) now reaping child worker processes
+stress: FAIL: [1] (422) kill error: No such process
+stress: FAIL: [1] (452) failed run completed in 1s
+```
+
+As of Nov, 2014 Docker does not allow any way to limit disk IO as far as I can tell. Cgroups does support that and systemd exposes it via BlockIO* options.
 
 
 
@@ -366,6 +471,11 @@ docker rm $(docker ps -a -q)
 docker rmi $(docker images -q)
 ```
 
+docker stop $(docker ps -a -q)
+sleep 2
+docker rm $(docker ps -a -q)
+docker rmi $(docker images -q)
+
  * Cleanup fleet
 ```
 fleetctl destroy $(fleetctl list-units -fields=unit -no-legend)
@@ -386,6 +496,26 @@ Resources
  * Free Rackspace developer account - https://developer.rackspace.com/signup/
 
  * Core OS - https://coreos.com/docs/
+
+ * A good overview on why docker was created. Done by dotCloud founder and CTO Solomon Hykes - https://www.youtube.com/watch?v=Q5POuMHxW-0  - 
+
+ * http://www.flockport.com/lxc-vs-docker/
+
+ * https://developer.rackspace.com/blog/running-coreos-and-kubernetes/
+
+ * RESOURCE MANAGEMENT WITH CONTROL GROUPS - https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Resource_Management_and_Linux_Containers_Guide/index.html
+
+Tools
+======
+ * Fig http://www.fig.sh/
+
+ * Kubernetes https://github.com/GoogleCloudPlatform/kubernetes
+
+ * Flocker https://github.com/ClusterHQ/flocker
+
+ * Boot2Docker https://github.com/boot2docker/boot2docker
+
+ * Apache mesos http://mesos.apache.org/
 
 
 Credits
