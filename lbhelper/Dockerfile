@@ -9,16 +9,17 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update
 RUN apt-get install -y curl python-setuptools python-pip less vim
 
-# Install pyrax
+# Install pyrax via pip
 RUN pip install pyrax termcolor
 
-# Script that creates a db file
+# copy our lb addition code. This could also be pulled from a git repo
 ADD ./usr/local/bin/config.py /usr/local/bin/config.py
 ADD ./usr/local/bin/utils.py /usr/local/bin/utils.py
 ADD ./usr/local/bin/lbmanage.py /usr/local/bin/lbmanage.py
 
-# Script that starts supervisord
+# Copy the startup script
 ADD ./usr/local/bin/start.sh /usr/local/bin/start.sh
 RUN chmod 755 /usr/local/bin/start.sh
 
+# Run it
 CMD ["/usr/bin/env", "bash", "/usr/local/bin/start.sh"]
