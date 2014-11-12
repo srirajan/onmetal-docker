@@ -27,7 +27,8 @@ coreos:
       ExecStart=/bin/sh -c "sed -i \"s/=:/=`ifconfig bond0.401 | grep 'inet ' | awk '{print $2}'`:/\" /run/systemd/system/etcd.service.d/20-cloudinit.conf && systemctl daemon-reload && systemctl etcd restart"
   - name: etc-environment.service
     # This is also a bit of hack like the etcd one above. For some reason /etc/environment is not being created and 
-    # some of fleet services need /etc/environment 
+    # some of fleet services need /etc/environment.
+    # Cloud init on CoreOS does not support runcmd either.  
     command: start
     content: |
       [Unit]
