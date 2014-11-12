@@ -14,8 +14,9 @@ ENV APP_PW 4dfjru4Djhedk33
 RUN apt-get update
 RUN apt-get -y -q install curl mysql-client
 
-#Download the database
+# Download the database into the container
 ADD world_innodb.sql /tmp/world_innodb.sql
 
+# Start the script
 ADD ./usr/local/bin/configuredb.sh /usr/local/bin/configuredb.sh
 RUN chmod 755 /usr/local/bin/configuredb.sh
