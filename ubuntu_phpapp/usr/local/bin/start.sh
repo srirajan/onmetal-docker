@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-# start all the services
+# Start supervisord
 /usr/local/bin/supervisord -n
