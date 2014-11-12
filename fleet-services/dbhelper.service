@@ -6,10 +6,11 @@ Requires=etcd.service
 EnvironmentFile=/etc/environment
 TimeoutStartSec=0
 ExecStartPre=/usr/bin/docker pull srirajan/dbhelper
+# Start the container as linked container
 ExecStart=/usr/bin/docker run --rm --name dbhelper --link db:db srirajan/dbhelper /usr/local/bin/configuredb.sh
 ExecStop=/usr/bin/docker stop dbhelper
 Restart=always
 
 [X-Fleet]
-# Schedule on the same machine as the associated Apache service
+# Schedule on the same machine as the associated db service
 X-ConditionMachineOf=db.service
