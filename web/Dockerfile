@@ -23,12 +23,12 @@ ADD ./etc/nginx/sites-available/default/example.conf /etc/nginx/sites-available/
 # Un-Daemonize php-fpm 
 RUN sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php5/fpm/php-fpm.conf
 
-# Install Supervisor & configure
+# Install Supervisord & copy configuration file
 RUN /usr/bin/easy_install supervisor
 RUN /usr/bin/easy_install supervisor-stdout
 ADD ./etc/supervisord.conf /etc/supervisord.conf
 
-# Copy a sample PHP file
+# Copy PHP files
 ADD ./usr/share/nginx/html/home.php /usr/share/nginx/html/home.php
 ADD ./usr/share/nginx/html/db_host.php /usr/share/nginx/html/db_host.php
 ADD ./usr/share/nginx/html/health.php /usr/share/nginx/html/health.php
@@ -37,12 +37,13 @@ ADD ./usr/share/nginx/html/world.php /usr/share/nginx/html/world.php
 # Open port 80 on the container
 EXPOSE 80
 
-# Script that creates a db file
+# Script that creates the db configuration needed for php
 ADD ./usr/local/bin/configuredb.sh /usr/local/bin/configuredb.sh
 RUN chmod 755 /usr/local/bin/configuredb.sh
 
-# Script that starts supervisord
+# Copy start up script
 ADD ./usr/local/bin/start.sh /usr/local/bin/start.sh
 RUN chmod 755 /usr/local/bin/start.sh
 
+# Run
 CMD ["/usr/bin/env", "bash", "/usr/local/bin/start.sh"]
