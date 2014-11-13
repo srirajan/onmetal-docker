@@ -452,6 +452,11 @@ As of Nov, 2014 Docker does not allow any way to limit disk IO as far as I can t
 
 Misc Commands
 ======
+ * Build without cache. This burnt me the first time. Ubuntu removes old package versions from their repos and if a cached image thas that version, apt-get install will try to pull that and fail. Needles to say --no-cache will take longer to build.
+
+```
+docker build --no-cache
+```
 
  * Review logs of etcd and fleet
 ```
@@ -470,11 +475,6 @@ docker rm $(docker ps -a -q)
 ```
 docker rmi $(docker images -q)
 ```
-
-docker stop $(docker ps -a -q)
-sleep 2
-docker rm $(docker ps -a -q)
-docker rmi $(docker images -q)
 
  * Cleanup fleet
 ```
@@ -504,6 +504,9 @@ Resources
  * https://developer.rackspace.com/blog/running-coreos-and-kubernetes/
 
  * RESOURCE MANAGEMENT WITH CONTROL GROUPS - https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Resource_Management_and_Linux_Containers_Guide/index.html
+
+ * Docker security article - https://docs.docker.com/articles/security/
+
 
 Tools
 ======
