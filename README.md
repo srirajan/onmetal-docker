@@ -222,7 +222,7 @@ docker run --name dbhelper --link db:db srirajan/dbhelper env
  * Now if you run the actual container as it is, it will login to the mysql instance on the db container and install the world database.
 ```
 docker rm dbhelper
-docker run -d --name dbhelper --link db:db srirajan/dbhelper
+docker run -d --name dbhelper --link db:db srirajan/dbhelper  /usr/local/bin/configuredb.sh
 docker logs dbhelper
 ```
 
@@ -254,60 +254,259 @@ git clone https://github.com/srirajan/onmetal-docker
 ```
 cd /home/core/onmetal-docker/fleet-services
 fleetctl submit *.service
-fleetctl list-unit-files
 ```
 
- * Run the db service.  This one is fairly simple service and runs a mysql container on one of the hosts. Wait for this service to start before proceeding.
+```
+fleetctl list-unit-files
+UNIT			    HASH	DSTATE		STATE		TARGET
+db.service		    fbf415a	launched	launched	-
+dbhelper.service	747c778	inactive	inactive	-
+lbhelper.service	0592528	inactive	inactive	-
+mondb.service		a4f50cc	inactive	inactive	-
+monweb@.service		d5ed242	inactive	inactive	-
+web@.service		0ac8be5	inactive	inactive	-
+```
+
+ * Run the db service.  
 
 ```
 fleetctl start db.service
-fleetctl list-units
+Unit db.service launched on 2aa4e35a.../10.208.201.253
+
+fleetctl list-units     
+UNIT		MACHINE				ACTIVE	SUB
+db.service	2aa4e35a.../10.208.201.253	active	running
 ```
+
+ * You can also review the systemd service fike. This one is fairly simple service and runs a mysql container on one of the hosts. Wait for this service to start before proceeding. Also note, that Fleet decides which host to run the container on.
+```
+cat db.service 
+[Unit]
+Description=DB service
+Requires=etcd.service
+
+[Service]
+EnvironmentFile=/etc/environment
+TimeoutStartSec=0
+ExecStartPre=/usr/bin/docker pull mysql
+ExecStart=/usr/bin/docker run --rm --name db -e MYSQL_ROOT_PASSWORD=dh47dk504dk44dd -p ${COREOS_PRIVATE_IPV4}:3306:3306 mysql
+ExecStop=/usr/bin/docker stop db
+Restart=always
+
+```
+
+ * One odddity with fleet is that to query the status, you have to run the command on the host running the container.
+```
+fleetctl status db.service
+db.service - DB service
+   Loaded: loaded (/run/fleet/units/db.service; linked-runtime)
+   Active: active (running) since Thu 2014-11-13 14:11:06 UTC; 8min ago
+  Process: 22050 ExecStartPre=/usr/bin/docker pull mysql (code=exited, status=0/SUCCESS)
+ Main PID: 22068 (docker)
+   CGroup: /system.slice/db.service
+           └─22068 /usr/bin/docker run --rm --name db -e MYSQL_ROOT_PASSWORD=dh47dk504dk44dd -p 10.208.201.253:3306:3306 mysql
+
+Nov 13 14:11:12 core04 docker[22068]: 2014-11-13 14:11:12 1 [Warning] No existing UUID has been found, so we assume that this is the first time that this server has been started. Generating a new UUID: ec53a4d8-6b3e-11e4-8386-0a1bbbebe238.
+Nov 13 14:11:12 core04 docker[22068]: 2014-11-13 14:11:12 1 [Note] Server hostname (bind-address): '*'; port: 3306
+Nov 13 14:11:12 core04 docker[22068]: 2014-11-13 14:11:12 1 [Note] IPv6 is available.
+Nov 13 14:11:12 core04 docker[22068]: 2014-11-13 14:11:12 1 [Note]   - '::' resolves to '::';
+Nov 13 14:11:12 core04 docker[22068]: 2014-11-13 14:11:12 1 [Note] Server socket created on IP: '::'.
+Nov 13 14:11:12 core04 docker[22068]: 2014-11-13 14:11:12 1 [Note] Event Scheduler: Loaded 0 events
+Nov 13 14:11:12 core04 docker[22068]: 2014-11-13 14:11:12 1 [Note] Execution of init_file '/tmp/mysql-first-time.sql' started.
+Nov 13 14:11:12 core04 docker[22068]: 2014-11-13 14:11:12 1 [Note] Execution of init_file '/tmp/mysql-first-time.sql' ended.
+Nov 13 14:11:12 core04 docker[22068]: 2014-11-13 14:11:12 1 [Note] mysqld: ready for connections.
+Nov 13 14:11:12 core04 docker[22068]: Version: '5.6.21'  socket: '/tmp/mysql.sock'  port: 3306  MySQL Community Server (GPL)
+```
+
 
  * dbhelper.service uses container linking to install the mysql world database and configure some users for our application. The systemd configuration tells fleet to run on the same host as the db.service. mondb.service is not a container but uses systemd to run a script that updates etcd with the information about the db service. In this case we are just pushing private IPs to etcd but this can be leveraged to do other things as well.
 
 ```
 fleetctl start dbhelper.service
+Unit dbhelper.service launched on 2aa4e35a.../10.208.201.253
+
 fleetctl start mondb.service
+Unit mondb.service launched on 2aa4e35a.../10.208.201.253
+
 ```
 
  * Run fleetctl again to see where our containers are deployed. Because of our systemd definition file, fleet will ensure they run on the same host.
 ```
 fleetctl list-units
+UNIT			MACHINE				ACTIVE	SUB
+db.service		2aa4e35a.../10.208.201.253	active	running
+dbhelper.service	2aa4e35a.../10.208.201.253	active	running
+mondb.service		2aa4e35a.../10.208.201.253	active	running
 ```
 
  * You can also login to the host running the dbhelper service and review the journal(logs) for the service.
 ```
-fleetctl journal dbhelper
+ fleetctl journal dbhelper
+-- Logs begin at Mon 2014-11-10 21:00:41 UTC, end at Thu 2014-11-13 14:23:43 UTC. --
+Nov 11 05:22:51 core04.novalocal systemd[1]: Stopped DB Helperservice.
+Nov 11 05:22:51 core04.novalocal systemd[1]: Unit dbhelper.service entered failed state.
+-- Reboot --
+Nov 13 14:22:43 core04 systemd[1]: Starting DB Helperservice...
+Nov 13 14:22:43 core04 docker[22239]: Pulling repository srirajan/dbhelper
+Nov 13 14:23:00 core04 systemd[1]: Started DB Helperservice.
+Nov 13 14:23:06 core04 docker[22272]: Creating the world database
+Nov 13 14:23:13 core04 docker[22272]: Creating application user
+Nov 13 14:23:13 core04 docker[22272]: Counting rows in world.city
+Nov 13 14:23:13 core04 docker[22272]: COUNT(*)
+Nov 13 14:23:13 core04 docker[22272]: 4079
 ```
 
- * Now let's move on the web container. Start the one container from the web service. In systemd a service with @ is generic service and you can append values to start as many of them.
+ * Now let's move on the web containers. Start the one container from the web service. In systemd a service with @ is generic service and you can append values to start as many of them. The first container will take a little bit of time as it is downloading the container.
 ```
 fleetctl start web@01.service 
+Unit web@01.service launched on 6847f4f7.../10.208.201.226
+
 fleetctl list-units
+UNIT			MACHINE				ACTIVE		SUB
+db.service		2aa4e35a.../10.208.201.253	active		running
+dbhelper.service	2aa4e35a.../10.208.201.253	active		running
+mondb.service		2aa4e35a.../10.208.201.253	active		running
+web@01.service		6847f4f7.../10.208.201.226	active	running
 ```
 
  * Start 9 more web containers. Fleet will disribute them across the different hosts. 
 ```
 fleetctl start web@{02..10}.service 
+Unit web@04.service launched on ee5398cf.../10.208.201.250
+Unit web@10.service launched on 2aa4e35a.../10.208.201.253
+Unit web@07.service launched on 6847f4f7.../10.208.201.226
+Unit web@09.service launched on ee5398cf.../10.208.201.250
+Unit web@03.service launched on 6847f4f7.../10.208.201.226
+Unit web@05.service launched on c3f52cb3.../10.208.201.234
+Unit web@02.service launched on ee5398cf.../10.208.201.250
+Unit web@06.service launched on c3f52cb3.../10.208.201.234
+Unit web@08.service launched on c3f52cb3.../10.208.201.234
+
 fleetctl list-units
+UNIT			MACHINE				ACTIVE	SUB
+db.service		2aa4e35a.../10.208.201.253	active	running
+dbhelper.service	2aa4e35a.../10.208.201.253	active	running
+mondb.service		2aa4e35a.../10.208.201.253	active	running
+web@01.service		6847f4f7.../10.208.201.226	active	running
+web@02.service		ee5398cf.../10.208.201.250	active	running
+web@03.service		6847f4f7.../10.208.201.226	active	running
+web@04.service		ee5398cf.../10.208.201.250	active	running
+web@05.service		c3f52cb3.../10.208.201.234	active	running
+web@06.service		c3f52cb3.../10.208.201.234	active	running
+web@07.service		6847f4f7.../10.208.201.226	active	running
+web@08.service		c3f52cb3.../10.208.201.234	active	running
+web@09.service		ee5398cf.../10.208.201.250	active	running
+web@10.service		2aa4e35a.../10.208.201.253	active	running
 ```
  
  * Start the monweb services. These are similar to the mondb.service and update etcd with a different values from the running containers.
 ```
 fleetctl start monweb@{01..10}.service 
+Unit monweb@04.service launched on ee5398cf.../10.208.201.250
+Unit monweb@02.service launched on ee5398cf.../10.208.201.250
+Unit monweb@01.service launched on 6847f4f7.../10.208.201.226
+Unit monweb@05.service launched on c3f52cb3.../10.208.201.234
+Unit monweb@03.service launched on 6847f4f7.../10.208.201.226
+Unit monweb@09.service launched on ee5398cf.../10.208.201.250
+Unit monweb@07.service launched on 6847f4f7.../10.208.201.226
+Unit monweb@10.service launched on 2aa4e35a.../10.208.201.253
+Unit monweb@08.service launched on c3f52cb3.../10.208.201.234
+Unit monweb@06.service launched on c3f52cb3.../10.208.201.234
+
 fleetctl list-units
+UNIT			MACHINE				ACTIVE	SUB
+db.service		2aa4e35a.../10.208.201.253	active	running
+dbhelper.service	2aa4e35a.../10.208.201.253	active	running
+mondb.service		2aa4e35a.../10.208.201.253	active	running
+monweb@01.service	6847f4f7.../10.208.201.226	active	running
+monweb@02.service	ee5398cf.../10.208.201.250	active	running
+monweb@03.service	6847f4f7.../10.208.201.226	active	running
+monweb@04.service	ee5398cf.../10.208.201.250	active	running
+monweb@05.service	c3f52cb3.../10.208.201.234	active	running
+monweb@06.service	c3f52cb3.../10.208.201.234	active	running
+monweb@07.service	6847f4f7.../10.208.201.226	active	running
+monweb@08.service	c3f52cb3.../10.208.201.234	active	running
+monweb@09.service	ee5398cf.../10.208.201.250	active	running
+monweb@10.service	2aa4e35a.../10.208.201.253	active	running
+web@01.service		6847f4f7.../10.208.201.226	active	running
+web@02.service		ee5398cf.../10.208.201.250	active	running
+web@03.service		6847f4f7.../10.208.201.226	active	running
+web@04.service		ee5398cf.../10.208.201.250	active	running
+web@05.service		c3f52cb3.../10.208.201.234	active	running
+web@06.service		c3f52cb3.../10.208.201.234	active	running
+web@07.service		6847f4f7.../10.208.201.226	active	running
+web@08.service		c3f52cb3.../10.208.201.234	active	running
+web@09.service		ee5398cf.../10.208.201.250	active	running
+web@10.service		2aa4e35a.../10.208.201.253	active	running
 ```
 
 
  * Query etcd for values. This will return the IP addresses and ports of the web containers. 
 ```
 for i in {01..10}; do  etcdctl get /services/web/web$i/unit; etcdctl get /services/web/web$i/host; etcdctl get /services/web/web$i/public_ipv4_addr; etcdctl get /services/web/web$i/port; echo "-----" ; done
+monweb@01.service
+core01
+162.242.254.113
+18001
+-----
+monweb@02.service
+core03
+162.242.255.71
+18002
+-----
+monweb@03.service
+core01
+162.242.254.113
+18003
+-----
+monweb@04.service
+core03
+162.242.255.71
+18004
+-----
+monweb@05.service
+core02
+162.242.254.215
+18005
+-----
+monweb@06.service
+core02
+162.242.254.215
+18006
+-----
+monweb@07.service
+core01
+162.242.254.113
+18007
+-----
+monweb@08.service
+core02
+162.242.254.215
+18008
+-----
+monweb@09.service
+core03
+162.242.255.71
+18009
+-----
+monweb@10.service
+core04
+162.242.255.73
+18010
+-----
 ```
 
  * Test the site on one of the container.
 ```
-curl http://<IP>:<Port>/home.php
+curl http://162.242.255.73:18010/home.php
+<!DOCTYPE html>
+<html>
+<body>
+
+<strong>There is no place like 127.0.0.1</strong><br/>Date & Time: 2014-11-13 14:29:18<br/>Container name: dca363b9af75<hr/>  
+
+</body>
+</html>
 ```
 
  * At this point, we have database container running and a bunch of web containers running on different hosts. The communication between them has been established as well. 
@@ -325,19 +524,195 @@ etcdctl set /services/rscloud/SERVER_HEALTH_URL health.php
 etcdctl set /services/rscloud/SERVER_HEALTH_DIGEST dbe72348d4e3aa87958f421e4a9592a82839f3d8
 ```
 
- * Now run the lbhelper service. This will populate the load balancer with the IP addresses and port numbers from the web containers.
+ * Now run the lbhelper service. 
 ```
 fleetctl start lbhelper.service 
+Unit lbhelper.service launched on 2aa4e35a.../10.208.201.253
+
+fleetctl list-units
+UNIT			MACHINE				ACTIVE	SUB
+db.service		2aa4e35a.../10.208.201.253	active	running
+dbhelper.service	2aa4e35a.../10.208.201.253	active	running
+lbhelper.service	2aa4e35a.../10.208.201.253	active	running
+mondb.service		2aa4e35a.../10.208.201.253	active	running
+monweb@01.service	6847f4f7.../10.208.201.226	active	running
+monweb@02.service	ee5398cf.../10.208.201.250	active	running
+monweb@03.service	6847f4f7.../10.208.201.226	active	running
+monweb@04.service	ee5398cf.../10.208.201.250	active	running
+monweb@05.service	c3f52cb3.../10.208.201.234	active	running
+monweb@06.service	c3f52cb3.../10.208.201.234	active	running
+monweb@07.service	6847f4f7.../10.208.201.226	active	running
+monweb@08.service	c3f52cb3.../10.208.201.234	active	running
+monweb@09.service	ee5398cf.../10.208.201.250	active	running
+monweb@10.service	2aa4e35a.../10.208.201.253	active	running
+web@01.service		6847f4f7.../10.208.201.226	active	running
+web@02.service		ee5398cf.../10.208.201.250	active	running
+web@03.service		6847f4f7.../10.208.201.226	active	running
+web@04.service		ee5398cf.../10.208.201.250	active	running
+web@05.service		c3f52cb3.../10.208.201.234	active	running
+web@06.service		c3f52cb3.../10.208.201.234	active	running
+web@07.service		6847f4f7.../10.208.201.226	active	running
+web@08.service		c3f52cb3.../10.208.201.234	active	running
+web@09.service		ee5398cf.../10.208.201.250	active	running
+web@10.service		2aa4e35a.../10.208.201.253	active	running```
 ```
- * You can look at the logs from it
+
+ * You can look at the logs from it. This container runs a python script that will populate the load balancer with the IP addresses and port numbers from the web containers. The script queries etcd for the information and also does a health check to determin the status of the container.
 ```
-fleetctl journal lbhelper.service 
+docker logs lbhelper
+[11/13/14 14:35:48][INFO]:Authenticated using rtsdemo10
+[11/13/14 14:36:32][INFO]:web 01 Found. Processing server
+[11/13/14 14:36:32][INFO]:Health test passed. Adding to load balancer
+[11/13/14 14:36:32][INFO]:Load balancer pool myworld found
+[11/13/14 14:36:32][INFO]:Adding server to load balancer
+[11/13/14 14:36:33][INFO]:web 02 Found. Processing server
+[11/13/14 14:36:33][INFO]:Health test passed. Adding to load balancer
+[11/13/14 14:36:33][INFO]:Load balancer pool myworld found
+[11/13/14 14:36:33][INFO]:Adding server to load balancer
+[11/13/14 14:36:44][INFO]:web 03 Found. Processing server
+[11/13/14 14:36:44][INFO]:Health test passed. Adding to load balancer
+[11/13/14 14:36:44][INFO]:Load balancer pool myworld found
+[11/13/14 14:36:44][INFO]:Adding server to load balancer
+[11/13/14 14:36:55][INFO]:web 04 Found. Processing server
+[11/13/14 14:36:55][INFO]:Health test passed. Adding to load balancer
+[11/13/14 14:36:55][INFO]:Load balancer pool myworld found
+[11/13/14 14:36:55][INFO]:Adding server to load balancer
+[11/13/14 14:37:06][INFO]:web 05 Found. Processing server
+[11/13/14 14:37:06][INFO]:Health test passed. Adding to load balancer
+[11/13/14 14:37:06][INFO]:Load balancer pool myworld found
+[11/13/14 14:37:06][INFO]:Adding server to load balancer
+[11/13/14 14:37:12][INFO]:web 06 Found. Processing server
+[11/13/14 14:37:12][INFO]:Health test passed. Adding to load balancer
+[11/13/14 14:37:12][INFO]:Load balancer pool myworld found
+[11/13/14 14:37:13][INFO]:Adding server to load balancer
+[11/13/14 14:37:23][INFO]:web 07 Found. Processing server
+[11/13/14 14:37:23][INFO]:Health test passed. Adding to load balancer
+[11/13/14 14:37:23][INFO]:Load balancer pool myworld found
+[11/13/14 14:37:24][INFO]:Adding server to load balancer
+[11/13/14 14:37:34][INFO]:web 08 Found. Processing server
+[11/13/14 14:37:34][INFO]:Health test passed. Adding to load balancer
+[11/13/14 14:37:34][INFO]:Load balancer pool myworld found
+[11/13/14 14:37:35][INFO]:Adding server to load balancer
+[11/13/14 14:37:45][INFO]:web 09 Found. Processing server
+[11/13/14 14:37:45][INFO]:Health test passed. Adding to load balancer
+[11/13/14 14:37:46][INFO]:Load balancer pool myworld found
+[11/13/14 14:37:46][INFO]:Adding server to load balancer
+[11/13/14 14:37:57][INFO]:web 10 Found. Processing server
+[11/13/14 14:37:57][INFO]:Health test passed. Adding to load balancer
+[11/13/14 14:37:57][INFO]:Load balancer pool myworld found
+[11/13/14 14:37:57][INFO]:Adding server to load balancer
+[11/13/14 14:38:08][INFO]:web 11 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 12 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 13 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 14 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 15 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 16 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 17 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 18 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 19 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 20 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 21 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 22 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 23 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 24 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 25 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 26 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 27 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 28 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 29 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 30 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 31 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 32 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 33 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 34 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 35 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 36 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 37 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 38 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 39 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 40 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 41 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 42 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 43 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 44 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 45 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 46 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 47 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 48 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 49 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 50 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 51 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 52 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 53 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 54 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 55 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 56 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 57 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 58 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 59 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 60 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 61 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 62 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 63 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 64 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 65 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 66 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 67 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 68 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 69 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 70 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 71 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 72 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 73 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 74 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 75 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 76 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 77 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 78 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 79 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 80 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 81 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 82 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 83 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 84 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 85 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 86 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 87 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 88 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 89 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 90 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 91 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 92 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 93 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 94 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 95 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 96 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 97 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 98 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:web 99 does not exist.Skipping...
+[11/13/14 14:38:08][INFO]:Printing summary
+[11/13/14 14:38:08][INFO]:Load balancer pool myworld found
+[11/13/14 14:38:08][INFO]:Nodes: 1.1.1.1 80
+[11/13/14 14:38:08][INFO]:Nodes: 162.242.254.113 18001
+[11/13/14 14:38:08][INFO]:Nodes: 162.242.255.71 18002
+[11/13/14 14:38:08][INFO]:Nodes: 162.242.254.113 18003
+[11/13/14 14:38:08][INFO]:Nodes: 162.242.255.71 18004
+[11/13/14 14:38:08][INFO]:Nodes: 162.242.254.215 18005
+[11/13/14 14:38:08][INFO]:Nodes: 162.242.254.215 18006
+[11/13/14 14:38:08][INFO]:Nodes: 162.242.254.113 18007
+[11/13/14 14:38:08][INFO]:Nodes: 162.242.254.215 18008
+[11/13/14 14:38:08][INFO]:Nodes: 162.242.255.71 18009
+[11/13/14 14:38:08][INFO]:Nodes: 162.242.255.73 18010
+[11/13/14 14:38:08][INFO]:Sleeping 10 seconds...
 ```
+
+ * This covers our initial exploration of Docker, CoreOS and Fleet.  There is more these tools can do to help with tighter integration but overall this combination is a good way to managed docker containers and run serious workloads on it.
+
 
 Docker Resource handling
 ======
 
-Docker uses cgroups to group processes. With cgroups you can manage resources very effectively and this does not apply just to containers. You can do the same with any process. Ultimately with docker, it is a process in a cgroup. On an OS that uses systemd, you can view them using the following.
+This section is more a general review of how resource handling works in containers. Docker uses cgroups to group processes. With cgroups you can manage resources very effectively and this does not apply just to containers. You can do the same with any process. Ultimately with docker, it is a process in a cgroup. On an OS that uses systemd, you can view them using the following.
 ```
 systemd-cgls
 ```
@@ -452,6 +827,9 @@ As of Nov, 2014 Docker does not allow any way to limit disk IO as far as I can t
 
 Misc Commands
 ======
+
+A collection of random snippets that are useful.
+
  * Build without cache. This burnt me the first time. Ubuntu removes old package versions from their repos and if a cached image thas that version, apt-get install will try to pull that and fail. Needles to say --no-cache will take longer to build.
 
 ```
@@ -507,6 +885,7 @@ Resources
 
  * Docker security article - https://docs.docker.com/articles/security/
 
+ * Getting Started with systemd - https://coreos.com/docs/launching-containers/launching/getting-started-with-systemd/
 
 Tools
 ======
@@ -524,5 +903,7 @@ Tools
 Credits
 ======
  * Simone Soldateschi - https://github.com/siso
+
  * Kyle Kelley - https://github.com/rgbkrk
+ 
  * tmpnb - https://github.com/jupyter/tmpnb
