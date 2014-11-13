@@ -8,7 +8,7 @@ Before you start
 
 You will need the following
  
- * A Rackspace cloud account. Get a free  tier Rackspace developer account - https://developer.rackspace.com/signup/
+ * A Rackspace cloud account. Get a free tier Rackspace developer account - https://developer.rackspace.com/signup/
  
  * If you don't have an account, you can still follow this and do it on your own servers.  Some of the examples are specific to Rackspace cloud servers but the ones around Docker, CoreOS and Fleet can be done on any server.
 
@@ -151,7 +151,7 @@ cat /etc/redhat-release
 exit
 ```
 
- * On the host(play01) with the networking. Docker uses a combination of Linux bridges and iptables to build managed networking on the container, communication with other containers and communication from the outside.
+ * On the host (play01) with the networking. Docker uses a combination of Linux bridges and iptables to build managed networking on the container, communication with other containers and communication from the outside.
 
 ```
 ifconfig docker0
@@ -240,7 +240,7 @@ docker ps
 CoreOS, Fleet & Docker
 =====
 
- * In the above steps, we should have created 4 core os machines with cloudinit. Now, lets play with CoreOS, etcd and Fleet. This should list all 4 machines in the cluster. Fleet is a distributed cluster management tool. It relies on etcd which is a distributed key value store for operation. It also works with systemd files and behaves like a distributed systemd in a multi-node setup.
+ * In the above steps, we should have created 4 core os machines with cloudinit. Now, lets play with CoreOS, etcd and Fleet. This should list all 4 machines in the cluster. Fleet is a distributed cluster management tool. It relies on etcd, which is a distributed key value store for operation. It also works with systemd files and behaves like a distributed systemd in a multi-node setup.
 ```
 fleetctl list-machines
 ```
@@ -278,7 +278,7 @@ UNIT		MACHINE				ACTIVE	SUB
 db.service	2aa4e35a.../10.208.201.253	active	running
 ```
 
- * You can also review the systemd service fike. This one is fairly simple service and runs a mysql container on one of the hosts. Wait for this service to start before proceeding. Also note, that Fleet decides which host to run the container on.
+ * You can also review the systemd service file. This one is fairly simple service and runs a mysql container on one of the hosts. Wait for this service to start before proceeding. Also note, that Fleet decides which host to run the container on.
 ```
 cat db.service 
 [Unit]
@@ -295,7 +295,7 @@ Restart=always
 
 ```
 
- * One odddity with fleet is that to query the status, you have to run the command on the host running the container.
+ * One oddity with fleet is that to query the status, you have to run the command on the host running the container.
 ```
 fleetctl status db.service
 db.service - DB service
@@ -339,7 +339,7 @@ dbhelper.service	2aa4e35a.../10.208.201.253	active	running
 mondb.service		2aa4e35a.../10.208.201.253	active	running
 ```
 
- * You can also login to the host running the dbhelper service and review the journal(logs) for the service.
+ * You can also login to the host running the dbhelper service and review the journal (logs) for the service.
 ```
  fleetctl journal dbhelper
 -- Logs begin at Mon 2014-11-10 21:00:41 UTC, end at Thu 2014-11-13 14:23:43 UTC. --
@@ -399,7 +399,7 @@ web@09.service		ee5398cf.../10.208.201.250	active	running
 web@10.service		2aa4e35a.../10.208.201.253	active	running
 ```
  
- * Start the monweb services. These are similar to the mondb.service and update etcd with a different values from the running containers.
+ * Start the monweb services. These are similar to the mondb.service and update etcd with different values from the running containers.
 ```
 fleetctl start monweb@{01..10}.service 
 Unit monweb@04.service launched on ee5398cf.../10.208.201.250
@@ -557,7 +557,7 @@ web@09.service		ee5398cf.../10.208.201.250	active	running
 web@10.service		2aa4e35a.../10.208.201.253	active	running```
 ```
 
- * You can look at the logs from it. This container runs a python script that will populate the load balancer with the IP addresses and port numbers from the web containers. The script queries etcd for the information and also does a health check to determin the status of the container.
+ * You can look at the logs from it. This container runs a python script that will populate the load balancer with the IP addresses and port numbers from the web containers. The script queries etcd for the information and also does a health check to determine the status of the container.
 ```
 docker logs lbhelper
 [11/13/14 14:35:48][INFO]:Authenticated using rtsdemo10
@@ -830,7 +830,7 @@ Misc Commands
 
 A collection of random snippets that are useful.
 
- * Build without cache. This burnt me the first time. Ubuntu removes old package versions from their repos and if a cached image thas that version, apt-get install will try to pull that and fail. Needles to say --no-cache will take longer to build.
+ * Build without cache. This burnt me the first time. Ubuntu removes old package versions from their repos and if a cached image has that version, apt-get install will try to pull that and fail. Needless to say --no-cache will take longer to build.
 
 ```
 docker build --no-cache
@@ -907,3 +907,4 @@ Credits
  * Kyle Kelley - https://github.com/rgbkrk
  
  * tmpnb - https://github.com/jupyter/tmpnb
+
