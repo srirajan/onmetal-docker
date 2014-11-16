@@ -22,7 +22,16 @@ On Metal
  
 As of Nov, 2014, On Metal is only available in US region of IAD. So you need a Rackspace US cloud account. You can read more about On Metal here. http://www.rackspace.com/cloud/servers/onmetal/
 
- * List all On Metal images
+ * Build our first Ubuntu 14.04 LTS (Trusty Tahr) On Metal server
+```
+key=sri-mb
+nova boot --flavor onmetal-compute1 \
+--image 6cbfd76c-644c-4e28-b3bf-5a6c2a879a4a \
+--key-name $key \
+--poll play01
+```
+
+ * While that is building, let's look around. List all On Metal images
 ```
 $ nova image-list |egrep 'Name|OnMetal'
 | ID                                   | Name                                                                                         | Status | Server                               |
@@ -48,13 +57,7 @@ $ nova flavor-list |egrep 'Name|OnMetal'
 | onmetal-memory1  | OnMetal Memory v1       | 524288    | 32   | 0         |      | 24    | 10000.0     | N/A       |
 ```
 
- * Build our first Ubuntu 14.04 LTS (Trusty Tahr) On Metal server
-```
-key=sri-mb
-nova boot --flavor onmetal-compute1 --image 6cbfd76c-644c-4e28-b3bf-5a6c2a879a4a --key-name $key --poll play01
-```
-
- * SSH to the server
+ * Once the server has finished building SSH to the server
 ```
 nova ssh play01 --network=public
 ```
@@ -64,6 +67,7 @@ nova ssh play01 --network=public
 less /proc/cpuinfo
 free -g
 ip addr
+lshw
 ```
 
 Prepare CoreOS cluster
@@ -99,12 +103,18 @@ cloudinit=cloudinit.yaml
 
  * Boot 4 servers for the cluster
 ```
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core01
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core02
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core03
-nova boot --flavor $flavor --image $image  --key-name $key --config-drive true --user-data $cloudinit core04
-```
+nova boot --flavor $flavor --image $image  --key-name $key \
+--config-drive true --user-data $cloudinit core01
 
+nova boot --flavor $flavor --image $image  --key-name $key \
+--config-drive true --user-data $cloudinit core02
+
+nova boot --flavor $flavor --image $image  --key-name $key \
+--config-drive true --user-data $cloudinit core03
+
+nova boot --flavor $flavor --image $image  --key-name $key \
+--config-drive true --user-data $cloudinit core04
+```
 
 Docker
 ======
@@ -193,6 +203,12 @@ docker images
 docker run -d -p 8082:80 "srirajan/ubuntu_phpapp"
 docker top <container UID>
 docker logs <container UID>
+docker inspect <container UID>
+
+#curl the container IP
+curl http://<container IP>/home.php
+
+#curl the public IP and port
 curl http://<IP>:8082/home.php
 ```
 
@@ -222,15 +238,25 @@ docker run --name dbhelper --link db:db srirajan/dbhelper env
  * Now if you run the actual container as it is, it will login to the mysql instance on the db container and install the world database.
 ```
 docker rm dbhelper
+
 docker run -d --name dbhelper --link db:db srirajan/dbhelper  /usr/local/bin/configuredb.sh
+
 docker logs dbhelper
 ```
 
  * For an even more complex example, let's try this. This Launches temporary IPython notebook servers and each instance runs on it's own containers. Note: This image is quite large and so can take long time to download.
 ```
+docker pull jupyter/demo
+
 export TOKEN=$( head -c 30 /dev/urandom | xxd -p )
-docker run --net=host -d -e CONFIGPROXY_AUTH_TOKEN=$TOKEN jupyter/configurable-http-proxy --default-target http://127.0.0.1:9999
-docker run --net=host -d -e CONFIGPROXY_AUTH_TOKEN=$TOKEN -v /var/run/docker.sock:/docker.sock jupyter/tmpnb python orchestrate.py --cull-timeout=60 --docker-version="1.12" --command="ipython3 notebook --NotebookApp.base_url={base_path} --ip=0.0.0.0 --port {port}"
+
+docker run --net=host -d -e CONFIGPROXY_AUTH_TOKEN=$TOKEN jupyter/configurable-http-proxy \
+--default-target http://127.0.0.1:9999
+
+docker run --net=host -d -e CONFIGPROXY_AUTH_TOKEN=$TOKEN -v /var/run/docker.sock:/docker.sock \
+jupyter/tmpnb python orchestrate.py --cull-timeout=60 --docker-version="1.12" \
+--command="ipython3 notebook --NotebookApp.base_url={base_path} --ip=0.0.0.0 --port {port}"
+
 docker ps
 ```
 
@@ -273,7 +299,7 @@ web@.service		0ac8be5	inactive	inactive	-
 fleetctl start db.service
 Unit db.service launched on 2aa4e35a.../10.208.201.253
 
-fleetctl list-units     
+fleetctl list-units
 UNIT		MACHINE				ACTIVE	SUB
 db.service	2aa4e35a.../10.208.201.253	active	running
 ```
@@ -341,7 +367,7 @@ mondb.service		2aa4e35a.../10.208.201.253	active	running
 
  * You can also login to the host running the dbhelper service and review the journal (logs) for the service.
 ```
- fleetctl journal dbhelper
+fleetctl journal dbhelper
 -- Logs begin at Mon 2014-11-10 21:00:41 UTC, end at Thu 2014-11-13 14:23:43 UTC. --
 Nov 11 05:22:51 core04.novalocal systemd[1]: Stopped DB Helperservice.
 Nov 11 05:22:51 core04.novalocal systemd[1]: Unit dbhelper.service entered failed state.
@@ -706,7 +732,7 @@ docker logs lbhelper
 [11/13/14 14:38:08][INFO]:Sleeping 10 seconds...
 ```
 
- * This covers our initial exploration of Docker, CoreOS and Fleet.  There is more these tools can do to help with tighter integration but overall this combination is a good way to managed docker containers and run serious workloads on it.
+ * This covers our initial exploration of Docker, CoreOS and Fleet.  There is more these tools can do to help with tighter integration but overall this combination is a good way to manage docker containers and run serious workloads on it.
 
 
 Docker Resource handling
