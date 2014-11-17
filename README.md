@@ -1,7 +1,7 @@
 
 This exercise will review Rackspace On Metal, an intro to Docker, review of CoreOS & Fleet and demonstrate how one could use all of them to build a multi-tier application. 
 
-The associated presentation on this can be found at TODO:slide share link
+The associated presentation on this can be found at bit.ly/rs-onmetal-docker
 
 Before you start
 ======
