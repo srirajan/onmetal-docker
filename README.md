@@ -875,6 +875,84 @@ curl -s -XGET http://localhost:4343/containers/5c59ae5bfd6bffb0d73453ffbaf08d9cd
 }
 ```
 
+Docker volumes
+======
+
+Docker containers by default don't hold the data till you commit the top most layer back to the image. Docker also provides support for volumes which allows storing persistent data. 
+
+
+ * You can mount a file or folder to the container. For e.g. Share a file from the host. This can be applied to directories as well. 
+
+```
+docker run --rm -it -v ~/.bash_history:/.bash_history ubuntu /bin/bash
+
+root@a45e2edce0b7:/# history |tail -10
+==> standard input <==
+  187  ls /var/run/docker.
+  188  docker stop $(docker ps -a -q)
+  189  sleep 2
+  190  mkdir /vol1
+  191  docker run -i -t -v /vol1 ubuntu /bin/bash
+  192  docker run -i -t -v /vol2 ubuntu /bin/bash
+  193  ls /var/lib/docker/container
+  194  ls /var/lib/docker/containers
+  195  docker run --rm -it -v ~/.bash_history:/.bash_history ubuntu /bin/bash
+  196  history |tail - 10
+
+root@a45e2edce0b7:/# exit
+exit
+
+```
+
+
+ * You can also create docker volumes that is independant from the container's UFS file system. These can can be shared and reused between containers. They also are not deleted till the last container using them has been deleted. They are not included in the image either. So they are good place for persistent data. Here's a quick example
+
+
+```
+docker run -d --name db1 --volume /dbvol1 ubuntu /bin/bash -c 'i=0; while true; do echo "Writing file $i";  echo $i > /dbvol1/data-$i ;  i=$((i+1)) ; echo "Sleeping..."; sleep 10; done'
+```
+
+ * Watch the logs
+```
+docker logs -f db1
+Writing file 0
+Sleeping...
+Writing file 1
+Sleeping...
+```
+
+ * Start another server that is attached to the volume we created above
+```
+ docker run -t -i --volumes-from db1 --name db2 centos /bin/bash
+
+bash-4.2# df
+Filesystem     1K-blocks     Used Available Use% Mounted on
+rootfs          29617196 13549636  14758480  48% /
+none            29617196 13549636  14758480  48% /
+tmpfs           16456924        0  16456924   0% /dev
+shm                65536        0     65536   0% /dev/shm
+/dev/sda1       29617196 13549636  14758480  48% /dbvol1
+tmpfs            3291388      760   3290628   1% /etc/resolv.conf
+tmpfs           16456924        0  16456924   0% /proc/kcore
+
+bash-4.2# ls /dbvol1/
+data-0	data-1	data-2	data-3
+
+bash-4.2# exit
+exit
+```
+
+ * You review the data on the host as well.
+
+```
+docker inspect -f '{{.Volumes}}' db1
+map[/dbvol1:/var/lib/docker/vfs/dir/d57a5f23cacd36721ac6fc15386e78d1a39621cebcfc2d46fbe81dec2a0f1ff6]
+
+ls /var/lib/docker/vfs/dir/d57a5f23cacd36721ac6fc15386e78d1a39621cebcfc2d46fbe81dec2a0f1ff6
+```
+
+Use of volumes does bind the container to the host. Volumes can be migrated to other hosts but they need manual steps. Docker also does not provide any easy way to manage these volumes (there is no docker volumes). These volumes will stay the host till you delete every container that used it. The container need not be running (volumes are persistent).
+
 
 
 Misc Commands
